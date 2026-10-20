@@ -2,6 +2,7 @@ name: "HandyRU Build"
 
 # Unsigned installers for HandyRU. The fork has no signing certificates, so
 # macOS shows a Gatekeeper warning on first launch and Windows a SmartScreen one.
+# Run: gh workflow run handyru-build.yml -R baldmaxim/HandyRU
 
 on: workflow_dispatch
 
