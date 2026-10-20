@@ -1,7 +1,7 @@
 use crate::audio_toolkit::chunking;
 use crate::audio_toolkit::{
-    apply_custom_words, detect_output_language, normalize_transcription_output,
-    remove_filler_words, OutputLanguageEvidence,
+    apply_custom_words, custom_word_aliases, custom_word_terms, detect_output_language,
+    normalize_transcription_output, remove_filler_words, OutputLanguageEvidence,
 };
 use crate::chinese_script::{convert_chinese_script, ChineseVariety};
 use crate::engine_supervisor::{
@@ -1417,7 +1417,7 @@ fn with_model_detected_language(
 /// and rely on fuzzy correction instead.
 fn vocabulary_for_model(supports_vocabulary: bool, custom_words: &[String]) -> Vec<String> {
     if supports_vocabulary {
-        custom_words.to_vec()
+        custom_word_terms(custom_words)
     } else {
         Vec::new()
     }
@@ -1502,14 +1502,21 @@ fn post_process_transcription_text(
             _ => raw,
         };
 
-        let corrected = if !settings.custom_words.is_empty() && !custom_words_already_prompted {
+        let corrected = if settings.custom_words.is_empty() {
+            raw
+        } else if custom_words_already_prompted {
+            // The model saw the written terms; spoken forms still need mapping.
+            apply_custom_words(
+                &raw,
+                &custom_word_aliases(&settings.custom_words),
+                settings.word_correction_threshold,
+            )
+        } else {
             apply_custom_words(
                 &raw,
                 &settings.custom_words,
                 settings.word_correction_threshold,
             )
-        } else {
-            raw
         };
 
         let without_fillers = remove_filler_words(

@@ -11,6 +11,9 @@ interface CustomWordsProps {
   grouped?: boolean;
 }
 
+// Room for a rule with several spoken forms: "эл эм студио, лм студио = LM Studio".
+const MAX_CUSTOM_WORD_LENGTH = 100;
+
 const normalizeCustomWord = (word: string) =>
   word
     .replace(/[<>"']/g, "")
@@ -26,7 +29,7 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
     const normalizedWord = normalizeCustomWord(newWord);
 
     const handleAddWord = () => {
-      if (normalizedWord && normalizedWord.length <= 50) {
+      if (normalizedWord && normalizedWord.length <= MAX_CUSTOM_WORD_LENGTH) {
         if (customWords.includes(normalizedWord)) {
           toast.error(
             t("settings.advanced.customWords.duplicate", {
@@ -65,7 +68,7 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
           <div className="flex items-center gap-2">
             <Input
               type="text"
-              className="max-w-40"
+              className="max-w-64"
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               onKeyDown={handleKeyPress}
@@ -77,7 +80,7 @@ export const CustomWords: React.FC<CustomWordsProps> = React.memo(
               onClick={handleAddWord}
               disabled={
                 !normalizedWord ||
-                normalizedWord.length > 50 ||
+                normalizedWord.length > MAX_CUSTOM_WORD_LENGTH ||
                 isUpdating("custom_words")
               }
               variant="primary"
