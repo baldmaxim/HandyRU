@@ -383,6 +383,14 @@
         "title": "Ta bort utfyllnadsord",
         "description": "Tar bort vanliga tvekljud från transkriberingar. Stäng av för att behålla dem."
       },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "description": "Spoken Russian commands such as \"новая строка\" (new line), \"абзац\" (paragraph), \"точка\" (period), \"запятая\" (comma), \"удали последнее слово\" (delete last word)."
+      },
+      "numberNormalization": {
+        "title": "Numbers as Digits",
+        "description": "Writes spoken Russian numbers as digits: \"двенадцать миллиметров\" → \"12 мм\", \"двадцать пять процентов\" → \"25 %\"."
+      },
       "chineseScript": {
         "title": "Kinesisk skrift",
         "description": "Skriver mandarin- och kantonesiska transkriptioner med förenklade eller traditionella tecken. Andra språk lämnas oförändrade.",

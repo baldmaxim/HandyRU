@@ -383,6 +383,14 @@
         "title": "Supprimer les mots de remplissage",
         "description": "Supprime les hésitations courantes des transcriptions. Désactivez cette option pour les conserver."
       },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "description": "Spoken Russian commands such as \"новая строка\" (new line), \"абзац\" (paragraph), \"точка\" (period), \"запятая\" (comma), \"удали последнее слово\" (delete last word)."
+      },
+      "numberNormalization": {
+        "title": "Numbers as Digits",
+        "description": "Writes spoken Russian numbers as digits: \"двенадцать миллиметров\" → \"12 мм\", \"двадцать пять процентов\" → \"25 %\"."
+      },
       "chineseScript": {
         "title": "Écriture chinoise",
         "description": "Écrit les transcriptions en mandarin et en cantonais en caractères simplifiés ou traditionnels. Les autres langues ne sont pas modifiées.",

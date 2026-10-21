@@ -383,6 +383,14 @@
         "title": "הסרת מילות מילוי",
         "description": "מסיר מילות היסוס נפוצות מתמלולים. השבת כדי להשאיר אותן."
       },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "description": "Spoken Russian commands such as \"новая строка\" (new line), \"абзац\" (paragraph), \"точка\" (period), \"запятая\" (comma), \"удали последнее слово\" (delete last word)."
+      },
+      "numberNormalization": {
+        "title": "Numbers as Digits",
+        "description": "Writes spoken Russian numbers as digits: \"двенадцать миллиметров\" → \"12 мм\", \"двадцать пять процентов\" → \"25 %\"."
+      },
       "chineseScript": {
         "title": "כתב סיני",
         "description": "כותב תמלולים במנדרינית ובקנטונזית בתווים מפושטים או מסורתיים. שפות אחרות נשארות ללא שינוי.",

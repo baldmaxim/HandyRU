@@ -383,6 +383,14 @@
         "title": "フィラー語を削除",
         "description": "文字起こしから一般的なフィラー語を削除します。残すにはオフにしてください。"
       },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "description": "Spoken Russian commands such as \"новая строка\" (new line), \"абзац\" (paragraph), \"точка\" (period), \"запятая\" (comma), \"удали последнее слово\" (delete last word)."
+      },
+      "numberNormalization": {
+        "title": "Numbers as Digits",
+        "description": "Writes spoken Russian numbers as digits: \"двенадцать миллиметров\" → \"12 мм\", \"двадцать пять процентов\" → \"25 %\"."
+      },
       "chineseScript": {
         "title": "中国語の表記",
         "description": "北京語と広東語の文字起こしを簡体字または繁体字で出力します。他の言語は変更されません。",

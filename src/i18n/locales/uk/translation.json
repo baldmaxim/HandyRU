@@ -383,6 +383,14 @@
         "title": "Видаляти слова-паразити",
         "description": "Видаляє поширені слова-вагання з транскрипцій. Вимкніть, щоб зберегти їх."
       },
+      "voiceCommands": {
+        "title": "Voice Commands",
+        "description": "Spoken Russian commands such as \"новая строка\" (new line), \"абзац\" (paragraph), \"точка\" (period), \"запятая\" (comma), \"удали последнее слово\" (delete last word)."
+      },
+      "numberNormalization": {
+        "title": "Numbers as Digits",
+        "description": "Writes spoken Russian numbers as digits: \"двенадцать миллиметров\" → \"12 мм\", \"двадцать пять процентов\" → \"25 %\"."
+      },
       "chineseScript": {
         "title": "Китайська писемність",
         "description": "Записує транскрипції мандаринською та кантонською спрощеними або традиційними ієрогліфами. Інші мови не змінюються.",

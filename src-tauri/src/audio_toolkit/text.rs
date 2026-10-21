@@ -108,18 +108,26 @@ struct CustomWordMatchKey {
     word_index: usize,
     key: String,
     script: KeyScript,
-    /// Precomputed so each candidate n-gram costs one encode, not one per
-    /// dictionary entry.
+    /// The key in Latin letters: the key itself, or its romanization for a
+    /// Cyrillic key, so a Latin candidate can be compared with a Russian entry.
+    latin: String,
+    /// Phonetic code of `latin`. Precomputed so each candidate n-gram costs one
+    /// encode, not one per dictionary entry.
     phonetic: Option<PhoneticCode>,
 }
 
 impl CustomWordMatchKey {
     fn new(word_index: usize, key: String, script: KeyScript) -> Self {
-        let phonetic = PhoneticCode::encode(&key);
+        let latin = match script {
+            KeyScript::Latin => key.clone(),
+            KeyScript::Cyrillic => romanize(&key),
+        };
+        let phonetic = PhoneticCode::encode(&latin);
         Self {
             word_index,
             key,
             script,
+            latin,
             phonetic,
         }
     }
@@ -276,20 +284,22 @@ struct WordMatch<'a> {
     ending_len: usize,
 }
 
-/// Scores a candidate against a Latin dictionary key; `None` when the pair is
-/// not comparable.
+/// Scores a candidate against a dictionary key, both in Latin letters; `None`
+/// when the pair is not comparable.
 ///
-/// A candidate romanized from Cyrillic must also sound like the entry, unless
-/// it romanizes to it exactly: the romanization only approximates English
-/// spelling, and edit distance alone would let ordinary Russian words drift
-/// onto dictionary terms.
+/// `cross_script` is set when exactly one side was romanized from Cyrillic
+/// (a Russian word against a Latin entry, or a Latin word against a Russian
+/// entry). Such a pair must also sound alike, unless it is identical after
+/// romanization: the romanization only approximates English spelling, and edit
+/// distance alone would let ordinary words drift onto dictionary terms.
 fn score_latin_key(
     candidate: &str,
     candidate_phonetic: Option<&PhoneticCode>,
-    custom_word_key: &CustomWordMatchKey,
-    romanized: bool,
+    key: &str,
+    key_phonetic: Option<&PhoneticCode>,
+    cross_script: bool,
 ) -> Option<f64> {
-    let phonetic_match = match (candidate_phonetic, &custom_word_key.phonetic) {
+    let phonetic_match = match (candidate_phonetic, key_phonetic) {
         (Some(candidate_code), Some(key_code)) => candidate_code.matches(key_code),
         _ => false,
     };
@@ -305,7 +315,7 @@ fn score_latin_key(
     // MIN_PHONETIC_CODE_LEN, which keeps the gate off short, collision-prone
     // terms.
     let candidate_len = candidate.chars().count();
-    let custom_word_len = custom_word_key.key.chars().count();
+    let custom_word_len = key.chars().count();
     let len_diff = candidate_len.abs_diff(custom_word_len) as f64;
     let max_len = candidate_len.max(custom_word_len) as f64;
     let len_ratio = if phonetic_match { 0.5 } else { 0.25 };
@@ -315,8 +325,8 @@ fn score_latin_key(
     }
 
     // Calculate Levenshtein distance (normalized by length)
-    let levenshtein_dist = levenshtein(candidate, &custom_word_key.key);
-    if romanized && !phonetic_match && levenshtein_dist > 0 {
+    let levenshtein_dist = levenshtein(candidate, key);
+    if cross_script && !phonetic_match && levenshtein_dist > 0 {
         return None;
     }
     let levenshtein_score = if max_len > 0.0 {
@@ -329,7 +339,7 @@ fn score_latin_key(
     // Romanized Russian keeps its own vowels, which Double Metaphone ignores:
     // "выросла" and "Vercel" share FRSL. A short code is weak evidence there,
     // so the spelling has to stay close as well.
-    if romanized && phonetic_match && !strong && levenshtein_score > MAX_ROMANIZED_SPELLING_GAP {
+    if cross_script && phonetic_match && !strong && levenshtein_score > MAX_ROMANIZED_SPELLING_GAP {
         return None;
     }
 
@@ -419,14 +429,21 @@ fn find_best_match<'a>(
 
     for custom_word_key in custom_word_match_keys {
         let scored = match custom_word_key.script {
-            KeyScript::Latin => {
-                score_latin_key(&latin, latin_phonetic.as_ref(), custom_word_key, romanized)
-                    .map(|score| (score, 0))
-            }
+            KeyScript::Latin => score_latin_key(
+                &latin,
+                latin_phonetic.as_ref(),
+                &custom_word_key.latin,
+                custom_word_key.phonetic.as_ref(),
+                romanized,
+            )
+            .map(|score| (score, 0)),
             KeyScript::Cyrillic if romanized => {
                 score_cyrillic_key(candidate, &custom_word_key.key, allow_ending)
             }
-            KeyScript::Cyrillic => None,
+            // Latin spelling of a Russian term ("snip" for "СНиП") must match
+            // the entry's romanization exactly: English words sit too close
+            // phonetically ("ghost" sounds like "gost") to allow any slack.
+            KeyScript::Cyrillic => (latin == custom_word_key.latin).then_some((0.0, 0)),
         };
         let Some((score, ending_len)) = scored else {
             continue;
@@ -529,6 +546,9 @@ fn case_ending(word: &str, len: usize) -> String {
 /// - Double Metaphone phonetic matching for pronunciation similarity
 /// - N-gram matching for multi-word speech artifacts (e.g., "Charge B" -> "ChargeBee")
 /// - Romanization of Russian text, so "опен роутер" matches "OpenRouter"
+/// - The reverse direction: a Latin spelling of a Russian term ("snip",
+///   "gost") is compared with the romanization of a Cyrillic entry ("СНиП",
+///   "ГОСТ") and replaced by the entry
 ///
 /// An entry written as `spoken = written` ("клод, клауд = Claude") matches
 /// its spoken forms and writes the right-hand side.
@@ -1797,6 +1817,26 @@ mod tests {
             apply_custom_words("адинцов сказал", &custom_words, 0.18),
             "Одинцов сказал"
         );
+    }
+
+    #[test]
+    fn test_latin_spelling_matches_russian_entries() {
+        let custom_words = words(&["СНиП", "ГОСТ", "хоткей"]);
+        assert_eq!(
+            apply_custom_words("по snip и gost", &custom_words, 0.18),
+            "по СНиП и ГОСТ"
+        );
+        assert_eq!(
+            apply_custom_words("нажми hotkey", &custom_words, 0.18),
+            "нажми хоткей"
+        );
+    }
+
+    #[test]
+    fn test_english_text_is_not_rewritten_into_russian_entries() {
+        let custom_words = words(&["СНиП", "ГОСТ", "Одинцов"]);
+        let text = "the ghost snippet is good";
+        assert_eq!(apply_custom_words(text, &custom_words, 0.18), text);
     }
 
     #[test]

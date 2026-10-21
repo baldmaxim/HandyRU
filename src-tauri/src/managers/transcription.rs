@@ -1,7 +1,8 @@
 use crate::audio_toolkit::chunking;
 use crate::audio_toolkit::{
-    apply_custom_words, custom_word_aliases, custom_word_terms, detect_output_language,
-    normalize_transcription_output, remove_filler_words, OutputLanguageEvidence,
+    apply_custom_words, apply_voice_commands, custom_word_aliases, custom_word_terms,
+    detect_output_language, normalize_russian_numbers, normalize_transcription_output,
+    remove_filler_words, OutputLanguageEvidence,
 };
 use crate::chinese_script::{convert_chinese_script, ChineseVariety};
 use crate::engine_supervisor::{
@@ -1526,7 +1527,20 @@ fn post_process_transcription_text(
             settings.filler_word_removal_enabled,
         );
 
-        normalize_transcription_output(&without_fillers)
+        let normalized = normalize_transcription_output(&without_fillers);
+
+        // Both steps run after normalization: it collapses whitespace runs,
+        // which would swallow the newlines produced by voice commands.
+        let with_numbers = if settings.number_normalization_enabled {
+            normalize_russian_numbers(&normalized)
+        } else {
+            normalized
+        };
+        if settings.voice_commands_enabled {
+            apply_voice_commands(&with_numbers)
+        } else {
+            with_numbers
+        }
     })
 }
 
@@ -2199,6 +2213,36 @@ mod tests {
             &supported,
         );
         assert_eq!(corrected, "i use Handy every day");
+    }
+
+    #[test]
+    fn numbers_and_voice_commands_run_after_normalization() {
+        let evidence = OutputLanguageEvidence::UserSelected("ru".to_string());
+        let supported = languages(&["ru"]);
+        let run = |settings: &AppSettings| {
+            post_process_transcription_text(
+                "длина двенадцать  миллиметров точка новая строка дальше".to_string(),
+                settings,
+                false,
+                &evidence,
+                &supported,
+            )
+        };
+
+        // Newlines survive because commands run after whitespace collapsing.
+        assert_eq!(run(&AppSettings::default()), "Длина 12 мм.\nДальше");
+
+        let no_commands = AppSettings {
+            voice_commands_enabled: false,
+            ..Default::default()
+        };
+        assert_eq!(run(&no_commands), "длина 12 мм точка новая строка дальше");
+
+        let no_numbers = AppSettings {
+            number_normalization_enabled: false,
+            ..Default::default()
+        };
+        assert_eq!(run(&no_numbers), "Длина двенадцать миллиметров.\nДальше");
     }
 }
 
