@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="224" ry="224" fill="#1f2937"/>
+  <!-- Microphone capsule -->
+  <rect x="402" y="210" width="220" height="360" rx="110" ry="110" fill="#ffffff"/>
+  <!-- Holder arc -->
+  <path d="M322 480 V510 A190 190 0 0 0 702 510 V480" fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round"/>
+  <!-- Stand -->
+  <path d="M512 700 V790 M392 800 H632" fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round"/>
+  <!-- Accent sound arcs -->
+  <path d="M720 330 A220 220 0 0 1 720 450" fill="none" stroke="#3b82f6" stroke-width="36" stroke-linecap="round"/>
+  <path d="M780 280 A300 300 0 0 1 780 500" fill="none" stroke="#3b82f6" stroke-width="36" stroke-linecap="round"/>
+  <path d="M304 330 A220 220 0 0 0 304 450" fill="none" stroke="#3b82f6" stroke-width="36" stroke-linecap="round"/>
+  <path d="M244 280 A300 300 0 0 0 244 500" fill="none" stroke="#3b82f6" stroke-width="36" stroke-linecap="round"/>
+</svg>

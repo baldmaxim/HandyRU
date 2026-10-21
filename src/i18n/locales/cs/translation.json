@@ -267,6 +267,18 @@
         "label": "Zobrazit ikonu v systémové liště",
         "description": "Zobrazit ikonu Handy v systémové liště."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Překryv",

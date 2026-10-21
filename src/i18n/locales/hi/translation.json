@@ -267,6 +267,18 @@
         "label": "ट्रे आइकन दिखाएं",
         "description": "सिस्टम ट्रे में Handy का आइकन दिखाएं."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "ओवरले",

@@ -267,6 +267,18 @@
         "label": "显示托盘图标",
         "description": "在系统托盘中显示 Handy 图标。"
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "悬浮窗",

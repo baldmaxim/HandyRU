@@ -267,6 +267,18 @@
         "label": "Hiển thị biểu tượng khay",
         "description": "Hiển thị biểu tượng Handy trong khay hệ thống."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Lớp phủ",

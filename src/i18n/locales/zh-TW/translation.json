@@ -267,6 +267,18 @@
         "label": "顯示系統匣圖示",
         "description": "在系統匣中顯示 Handy 圖示"
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "懸浮窗",

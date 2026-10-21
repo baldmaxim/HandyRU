@@ -478,6 +478,10 @@ pub struct AppSettings {
     pub app_language: String,
     #[serde(default = "default_theme")]
     pub theme: Theme,
+    /// Accent color preset id (see `ACCENT_COLORS`); the frontend maps it to a
+    /// palette via `data-accent`.
+    #[serde(default = "default_accent_color")]
+    pub accent_color: String,
     #[serde(default)]
     pub experimental_enabled: bool,
     #[serde(default)]
@@ -657,6 +661,13 @@ fn default_sound_theme() -> SoundTheme {
 
 fn default_theme() -> Theme {
     Theme::System
+}
+
+/// Accent color presets the UI knows how to render.
+pub const ACCENT_COLORS: [&str; 6] = ["blue", "green", "violet", "orange", "graphite", "pink"];
+
+fn default_accent_color() -> String {
+    "blue".to_string()
 }
 
 fn default_post_process_enabled() -> bool {
@@ -1012,6 +1023,7 @@ pub fn get_default_settings() -> AppSettings {
         append_trailing_space: false,
         app_language: default_app_language(),
         theme: default_theme(),
+        accent_color: default_accent_color(),
         experimental_enabled: false,
         lazy_stream_close: false,
         keyboard_implementation: KeyboardImplementation::default(),

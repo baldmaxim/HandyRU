@@ -237,6 +237,18 @@
         "label": "إظهار أيقونة شريط النظام",
         "description": ".عرض أيقونة Handy في شريط النظام"
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "التراكب",

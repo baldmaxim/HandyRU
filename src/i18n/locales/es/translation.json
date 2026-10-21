@@ -267,6 +267,18 @@
         "label": "Mostrar icono de bandeja",
         "description": "Mostrar el icono de Handy en la bandeja del sistema."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Superposición",

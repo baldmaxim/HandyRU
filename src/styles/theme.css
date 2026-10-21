@@ -6,13 +6,13 @@
      in App.css reference these, so a hex value lives in exactly one place. */
   --light-color-text: #0f0f0f;
   --light-color-background: #fbfbfb;
-  --light-color-logo-primary: #faa2ca;
-  --light-color-logo-stroke: #382731;
+  --light-color-logo-primary: #3b82f6;
+  --light-color-logo-stroke: #1f2937;
 
   --dark-color-text: #fbfbfb;
   --dark-color-background: #2c2b29;
-  --dark-color-logo-primary: #f28cbb;
-  --dark-color-logo-stroke: #fad1ed;
+  --dark-color-logo-primary: #60a5fa;
+  --dark-color-logo-stroke: #e5e7eb;
 
   /* Semantic status colors. First used by SecureInputWarning; intended to
      replace the ad-hoc yellow-500/red-500 usages (e.g. ui/Alert.tsx) over
@@ -23,7 +23,7 @@
   --dark-color-error: #f87171;
 
   /* Tokens that do not change between light and dark */
-  --color-background-ui: #da5893;
+  --color-background-ui: #2563eb;
   --color-text-stroke: #f6f6f6;
   --color-mid-gray: #808080;
 
@@ -74,4 +74,47 @@
   --color-logo-stroke: var(--dark-color-logo-stroke);
   --color-warning: var(--dark-color-warning);
   --color-error: var(--dark-color-error);
+}
+
+/*
+ * Accent color presets, driven by the `accent_color` setting via
+ * `document.documentElement.dataset.accent`. They only override the palette
+ * source vars above, so the active `--color-logo-primary` (and the light/dark
+ * `data-theme` overrides) resolve to the chosen accent in every theme mode.
+ * The base :root values are the `blue` preset, used when no attribute is set.
+ */
+:root[data-accent="blue"] {
+  --light-color-logo-primary: #3b82f6;
+  --dark-color-logo-primary: #60a5fa;
+  --color-background-ui: #2563eb;
+}
+
+:root[data-accent="green"] {
+  --light-color-logo-primary: #16a34a;
+  --dark-color-logo-primary: #4ade80;
+  --color-background-ui: #15803d;
+}
+
+:root[data-accent="violet"] {
+  --light-color-logo-primary: #8b5cf6;
+  --dark-color-logo-primary: #a78bfa;
+  --color-background-ui: #7c3aed;
+}
+
+:root[data-accent="orange"] {
+  --light-color-logo-primary: #f97316;
+  --dark-color-logo-primary: #fb923c;
+  --color-background-ui: #ea580c;
+}
+
+:root[data-accent="graphite"] {
+  --light-color-logo-primary: #52525b;
+  --dark-color-logo-primary: #a1a1aa;
+  --color-background-ui: #3f3f46;
+}
+
+:root[data-accent="pink"] {
+  --light-color-logo-primary: #faa2ca;
+  --dark-color-logo-primary: #f28cbb;
+  --color-background-ui: #da5893;
 }

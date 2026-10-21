@@ -267,6 +267,18 @@
         "label": "Mostra icona nella barra di sistema",
         "description": "Mostra l'icona di Handy nella barra di sistema."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Overlay",

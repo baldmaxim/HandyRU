@@ -267,6 +267,18 @@
         "label": "Taskleistensymbol anzeigen",
         "description": "Das Handy-Symbol in der Taskleiste anzeigen."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Overlay",

@@ -267,6 +267,18 @@
         "label": "Mostra la icona a la safata",
         "description": "Mostra la icona del Handy a la safata del sistema."
       },
+      "accent": {
+        "title": "Accent Color",
+        "description": "Choose the highlight color used across the app",
+        "options": {
+          "blue": "Blue",
+          "green": "Green",
+          "violet": "Violet",
+          "orange": "Orange",
+          "graphite": "Graphite",
+          "pink": "Pink"
+        }
+      },
       "overlay": {
         "style": {
           "title": "Finestra superposada",
