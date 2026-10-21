@@ -361,7 +361,16 @@
         "placeholder": "הוסף מילה",
         "add": "הוסף",
         "remove": "הסר את {{word}}",
-        "duplicate": "\"{{word}}\" כבר קיימת"
+        "duplicate": "\"{{word}}\" כבר קיימת",
+        "constructionDictionary": "Construction dictionary",
+        "export": "Export",
+        "import": "Import",
+        "added": "Added: {{count}}",
+        "allPresent": "Everything is already in the dictionary",
+        "imported": "Imported: {{count}}",
+        "readError": "Could not read the file",
+        "exported": "Dictionary saved",
+        "writeError": "Could not save the file"
       },
       "voiceActivityDetection": {
         "title": "זיהוי פעילות קולית",

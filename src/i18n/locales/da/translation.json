@@ -361,7 +361,16 @@
         "placeholder": "Tilføj et ord",
         "add": "Tilføj",
         "remove": "Fjern {{word}}",
-        "duplicate": "\"{{word}}\" findes allerede"
+        "duplicate": "\"{{word}}\" findes allerede",
+        "constructionDictionary": "Construction dictionary",
+        "export": "Export",
+        "import": "Import",
+        "added": "Added: {{count}}",
+        "allPresent": "Everything is already in the dictionary",
+        "imported": "Imported: {{count}}",
+        "readError": "Could not read the file",
+        "exported": "Dictionary saved",
+        "writeError": "Could not save the file"
       },
       "voiceActivityDetection": {
         "title": "Stemmeaktivitetsdetektion",

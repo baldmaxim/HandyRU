@@ -361,7 +361,16 @@
         "placeholder": "Agregar una palabra",
         "add": "Agregar",
         "remove": "Eliminar {{word}}",
-        "duplicate": "\"{{word}}\" ya existe"
+        "duplicate": "\"{{word}}\" ya existe",
+        "constructionDictionary": "Construction dictionary",
+        "export": "Export",
+        "import": "Import",
+        "added": "Added: {{count}}",
+        "allPresent": "Everything is already in the dictionary",
+        "imported": "Imported: {{count}}",
+        "readError": "Could not read the file",
+        "exported": "Dictionary saved",
+        "writeError": "Could not save the file"
       },
       "voiceActivityDetection": {
         "title": "Detección de actividad de voz",

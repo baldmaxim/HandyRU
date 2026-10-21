@@ -361,7 +361,16 @@
         "placeholder": "Afegiu una paraula",
         "add": "Afegiu",
         "remove": "Suprimiu {{word}}",
-        "duplicate": "«{{word}}» ja existeix"
+        "duplicate": "«{{word}}» ja existeix",
+        "constructionDictionary": "Construction dictionary",
+        "export": "Export",
+        "import": "Import",
+        "added": "Added: {{count}}",
+        "allPresent": "Everything is already in the dictionary",
+        "imported": "Imported: {{count}}",
+        "readError": "Could not read the file",
+        "exported": "Dictionary saved",
+        "writeError": "Could not save the file"
       },
       "voiceActivityDetection": {
         "title": "Detecció d'activitat de veu",

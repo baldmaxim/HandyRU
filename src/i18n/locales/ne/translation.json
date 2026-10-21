@@ -361,7 +361,16 @@
         "placeholder": "शब्द थप्नुहोस्",
         "add": "थप्नुहोस्",
         "remove": "{{word}} हटाउनुहोस्",
-        "duplicate": "\"{{word}}\" पहिले नै छ"
+        "duplicate": "\"{{word}}\" पहिले नै छ",
+        "constructionDictionary": "Construction dictionary",
+        "export": "Export",
+        "import": "Import",
+        "added": "Added: {{count}}",
+        "allPresent": "Everything is already in the dictionary",
+        "imported": "Imported: {{count}}",
+        "readError": "Could not read the file",
+        "exported": "Dictionary saved",
+        "writeError": "Could not save the file"
       },
       "voiceActivityDetection": {
         "title": "भ्वाइस एक्टिभिटी डिटेक्सन",

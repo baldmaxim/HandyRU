@@ -361,7 +361,16 @@
         "placeholder": "СНиП или клод = Claude",
         "add": "Добавить",
         "remove": "Удалить {{word}}",
-        "duplicate": "\"{{word}}\" уже существует"
+        "duplicate": "\"{{word}}\" уже существует",
+        "constructionDictionary": "Строительный словарь",
+        "export": "Экспорт",
+        "import": "Импорт",
+        "added": "Добавлено: {{count}}",
+        "allPresent": "Всё уже есть в словаре",
+        "imported": "Импортировано: {{count}}",
+        "readError": "Не удалось прочитать файл",
+        "exported": "Словарь сохранён",
+        "writeError": "Не удалось сохранить файл"
       },
       "voiceActivityDetection": {
         "title": "Определение голосовой активности",
