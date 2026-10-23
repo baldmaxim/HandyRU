@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { arch, platform } from "@tauri-apps/plugin-os";
 import {
@@ -23,8 +24,9 @@ interface UpdateCheckerProps {
 }
 
 // The app lives in the tray for days, so re-check periodically, not only at
-// launch.
-const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+// launch, and again whenever the settings window is brought up after a while.
+const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const FOCUS_RECHECK_MS = 10 * 60 * 1000;
 
 // idle → (check finds an update) → downloading → ready → installing.
 // Portable installs stop at "available": they can't self-update in place.
@@ -77,6 +79,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
   // The downloaded update; its bytes stay in memory until install().
   const updateRef = useRef<Update | null>(null);
   const notifiedVersionRef = useRef("");
+  const lastCheckRef = useRef(0);
 
   const moveTo = (next: UpdateStage) => {
     stageRef.current = next;
@@ -106,9 +109,17 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
     const updateUnlisten = listen("check-for-updates", () => {
       checkForUpdates(true);
     });
+    const focusUnlisten = getCurrentWindow().onFocusChanged(
+      ({ payload: focused }) => {
+        if (focused && Date.now() - lastCheckRef.current > FOCUS_RECHECK_MS) {
+          checkForUpdates(false);
+        }
+      },
+    );
 
     return () => {
       clearInterval(interval);
+      focusUnlisten.then((fn) => fn());
       if (upToDateTimeoutRef.current) {
         clearTimeout(upToDateTimeoutRef.current);
       }
@@ -175,6 +186,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
 
     try {
       checkingRef.current = true;
+      lastCheckRef.current = Date.now();
       setIsChecking(true);
       const update = await check();
 
