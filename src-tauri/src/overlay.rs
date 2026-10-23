@@ -43,15 +43,17 @@ tauri_panel! {
 // On Windows these sizes are additionally multiplied by the accessibility text
 // scale (see windows_text_scale_factor), which WebView2 applies as a zoom.
 //
-// Compact overlay (Minimal / transcribing / processing): the 40h pill animates
-// width from 172 (--ov-rest-w) to 216 (--ov-work-w) and expands from center, so
-// the window must fit the widest state plus a little slack.
+// Compact overlay (Minimal / transcribing / processing): a 40px circle that grows
+// into the pill (up to 216 wide, --ov-work-w) from center, with the working glow
+// around it. Height = 40 + 8 (--ov-edge-pad) on the anchored edge + 8 for the
+// glow on the far edge.
 const OVERLAY_WIDTH: f64 = 256.0;
-const OVERLAY_HEIGHT: f64 = 50.0;
+const OVERLAY_HEIGHT: f64 = 56.0;
 
-// Actual is 394x118, just a little extra
+// Live panel is 392x112 (36 control row + 76 text region) plus the 8px edge pad.
+// The height leaves the text region its full 64px cap.
 const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 120.0;
+const OVERLAY_STREAM_HEIGHT: f64 = 126.0;
 
 /// Overlay window size (logical) for a given UI state.
 fn overlay_dimensions(state: &str) -> (f64, f64) {
@@ -824,7 +826,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (3648, 2025, 384, 75)
+            (3648, 2016, 384, 84)
         );
         assert_eq!(
             windows_overlay_bounds(
@@ -836,7 +838,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
             ),
-            (3648, 6, 384, 75)
+            (3648, 6, 384, 84)
         );
     }
 
@@ -853,7 +855,7 @@ mod tests {
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (-1530, 1040, 500, 150)
+            (-1530, 1032, 500, 158)
         );
     }
 
@@ -872,9 +874,9 @@ mod tests {
             OVERLAY_STREAM_HEIGHT,
             OverlayPosition::Bottom,
         );
-        // 400x120 logical at 1.25 DPI x 1.1 text, still centered horizontally.
-        assert_eq!((x, y, width, height), (-1555, 1025, 550, 165));
-        // Bottom edge unchanged from the 1.0 case above (1040 + 150).
+        // 400x126 logical at 1.25 DPI x 1.1 text, still centered horizontally.
+        assert_eq!((x, y, width, height), (-1555, 1017, 550, 173));
+        // Bottom edge unchanged from the 1.0 case above (1032 + 158).
         assert_eq!(y + height, 1190);
 
         let (_, top_y, _, _) = windows_overlay_bounds(

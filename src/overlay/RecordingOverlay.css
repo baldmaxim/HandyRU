@@ -45,19 +45,23 @@
   --s-border: var(--light-s-border);
   --s-hair: var(--light-s-hair);
 
-  /* Card geometry — single source of truth for the visible overlay sizes. The
-     native overlay window (overlay.rs) is sized from these: it must be at least
-     the card's max footprint (--ov-work-w for compact, --ov-open-w for Live),
-     since the card is anchored flush to the screen edge in CSS. Keep overlay.rs
-     in sync when these change. */
-  --ov-rest-w: 172px; /* resting compact pill (minimal, recording) -- roomy enough
-                         for the English working label before the grow starts */
-  --ov-pill-w: 184px; /* base width / Live pill before it opens or collapses */
-  --ov-work-w: 216px; /* working pill (transcribing / polishing) -- wide enough to
-                         center longer labels; shared by Live (collapsed) + minimal */
+  /* Card geometry — single source of truth for the visible overlay sizes
+     (border-box). The native overlay window (overlay.rs) is sized from these: it
+     must fit the card's max footprint (--ov-work-w for compact, --ov-open-w for
+     Live) plus --ov-edge-pad on the anchored edge, which leaves room for the
+     working glow. Keep overlay.rs in sync when these change. */
+  --ov-circle: 40px; /* entrance + finalizing circle */
+  --ov-pill-w: 124px; /* listening pill: 6 inset + icon 22 + 8 + wave 52 + 8 +
+                         cancel 22 + 6 inset */
+  --ov-pill-h: 36px; /* listening pill / control-row height, borders included */
+  --ov-work-w: 216px; /* labelled working pill (model loading) — wide enough to
+                         center longer labels */
   --ov-open-w: 392px; /* Live panel, expanded */
-  --ov-base-h: 40px; /* control-row height (.sbase) */
   --ov-cap-max-h: 64px; /* max height of the scrolling live-text region */
+  --ov-edge-pad: 8px; /* gap to the anchored window edge so the glow isn't clipped */
+  /* Circle ↔ pill morph (OpenWhispr's grow curve). Keep the duration in sync
+     with ENTRANCE_GROW_MS in RecordingOverlay.tsx. */
+  --ov-grow: 300ms cubic-bezier(0.2, 0, 0, 1);
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -96,33 +100,24 @@
 
 /* ============================================================
    Unified overlay stage — one fixed, transparent container shared by the compact
-   pill and the Live panel (both render the same `.scard` base). The card is
-   anchored flush to the screen-edge side (bottom by default, top when placed up
-   top) and centered horizontally, so the visible card sits exactly
-   OVERLAY_*_OFFSET from the screen edge regardless of window height — only the
-   offsets in overlay.rs move it. Pops scale from that edge, so the card is never
-   drawn past it (matters for the 4px top offset on Windows/Linux).
+   pill and the Live panel (both render the same `.sshell > .scard`). The card is
+   anchored to the screen-edge side (bottom by default, top when placed up top),
+   --ov-edge-pad off the window edge, and centered horizontally, so only the
+   offsets in overlay.rs move it.
    ============================================================ */
 .ov-stage {
   position: fixed;
   inset: 0;
   display: flex;
   justify-content: center; /* horizontal centering, kept for both forms */
-  align-items: flex-end; /* bottom placement: flush to the bottom edge */
+  align-items: flex-end; /* bottom placement */
+  padding-bottom: var(--ov-edge-pad);
   font-family: var(--s-font);
 }
 .ov-stage.top {
-  align-items: flex-start; /* top placement: flush to the top edge */
-}
-
-/* Compact pill: fade the whole container in/out (the pill itself never pops or
-   morphs). */
-.ov-fade {
-  opacity: 0;
-  transition: opacity 200ms ease-out;
-}
-.ov-fade.show {
-  opacity: 1;
+  align-items: flex-start; /* top placement */
+  padding-top: var(--ov-edge-pad);
+  padding-bottom: 0;
 }
 
 /* Top placement, Live panel: stack the control pill above the text region so the
@@ -133,7 +128,6 @@
 .ov-stage.top .scard {
   /* column-reverse stacks the control pill above the text region. */
   flex-direction: column-reverse;
-  transform-origin: top center;
 }
 .ov-stage.top .stext-cap {
   /* Mirror of the bottom overlay (top: 12 / bottom: 0): the first line sits flush
@@ -158,66 +152,141 @@
   margin: 0;
 }
 
-/* Shared base card. Flat: theme surface + hairline border, no shadow or blur. */
-.scard {
-  width: var(--ov-pill-w);
-  /* Never wider than the window: an unaccounted content zoom degrades to a
-     narrower card instead of clipping. 2px = our border (no border-box reset). */
-  max-width: calc(100vw - 2px);
-  border-radius: 24px;
-  overflow: hidden;
+/* Shell: hosts the card plus the glow behind it, and owns the enter/exit. It is
+   keyed per session, so the pop replays on every recording. A slight overshoot
+   reads as a press being acknowledged; the exit is a quick shrink + fade that
+   finishes inside the native window's 300ms hide delay. */
+.sshell {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  flex: none; /* hold our own width; never let the stage flex shrink the card */
-  transform-origin: bottom center;
-  background: var(--s-surface);
-  border: 1px solid var(--s-border);
-  /* Flat: no drop shadow, no backdrop blur/saturate (was a glassy gradient look). */
-  /* pop-in plays on mount; morph (width/radius) is a transition */
-  animation: scard-pop 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  flex: none;
+  max-width: 100%;
+  animation: sshell-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
   transition:
-    width 460ms cubic-bezier(0.22, 1, 0.36, 1),
-    border-radius 460ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform, width, opacity;
+    opacity 180ms ease-in,
+    transform 200ms ease-in;
 }
-@keyframes scard-pop {
+@keyframes sshell-pop {
   from {
     opacity: 0;
-    /* Scale from the anchored edge (transform-origin) — never translate past it. */
-    transform: scale(0.92);
+    transform: scale(0.4);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-.scard.leaving {
+.sshell.leaving {
   opacity: 0;
-  transform: scale(0.96);
+  transform: scale(0.7);
+  pointer-events: none;
+}
+
+/* Shared base card. Flat: theme surface + hairline border, no shadow or blur.
+   Positioned so it paints over the glow layers, which it fully covers. */
+.scard {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--ov-pill-w);
+  /* Never wider than the window: an unaccounted content zoom degrades to a
+     narrower card instead of clipping. */
+  max-width: 100vw;
+  border-radius: calc(var(--ov-pill-h) / 2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: none; /* hold our own width; never let the stage flex shrink the card */
+  background: var(--s-surface);
+  border: 1px solid var(--s-border);
   transition:
-    opacity 240ms ease,
-    transform 300ms ease;
+    width var(--ov-grow),
+    border-radius var(--ov-grow);
+}
+.scard.circle {
+  width: var(--ov-circle);
+  border-radius: calc(var(--ov-circle) / 2);
+}
+.scard.labeled {
+  width: var(--ov-work-w);
 }
 .scard.open {
   width: var(--ov-open-w);
   border-radius: 16px;
-}
-.scard.working {
-  width: var(--ov-work-w);
-  border-radius: 18px;
+  transition:
+    width 440ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-radius 440ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Compact form: two fixed widths so the recording→working change is an animatable
-   width transition (intrinsic max-content can't be transitioned, and every label
-   is short enough to fit the resting pill, so content-sizing produced no visible
-   grow). The resting pill hugs the waveform; the working pill is roomy enough to
-   center the longest label — the .swork-label ellipsis is only a safety net past it. */
-.scard.compact {
-  animation: none;
-  width: var(--ov-rest-w);
+/* Working glow: a comet orbiting the card's rim over a breathing halo, in the
+   accent color. The rotor spins a conic gradient behind the card, so the orbit
+   follows the circle and the labelled capsule alike. */
+.sglow {
+  position: absolute;
+  inset: 0;
+  border-radius: calc(var(--ov-pill-h) / 2);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease-out;
 }
-.scard.compact.cworking {
-  width: var(--ov-work-w);
+.sglow.on {
+  opacity: 1;
+}
+.sglow::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--s-accent) 55%, transparent);
+  filter: blur(3px);
+  opacity: 0.5;
+}
+.sglow-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  overflow: hidden;
+  /* Bloom around the comet head; not clipped by the ring's own overflow. */
+  filter: drop-shadow(
+    0 0 2px color-mix(in srgb, var(--s-accent) 80%, transparent)
+  );
+}
+.sglow-rotor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /* Larger than the labelled pill's diagonal, so the ring is always covered. */
+  width: 260px;
+  height: 260px;
+  translate: -50% -50%;
+  background: conic-gradient(
+    transparent 0 50%,
+    color-mix(in srgb, var(--s-accent) 35%, transparent) 75%,
+    var(--s-accent) 93%,
+    color-mix(in srgb, var(--s-accent) 35%, white) 100%
+  );
+}
+/* Animations run only while lit; the 220ms fade covers the frozen frame. */
+.sglow.on::before {
+  animation: sglow-breathe 1.9s ease-in-out infinite;
+}
+.sglow.on .sglow-rotor {
+  animation: sglow-spin 1.6s linear infinite;
+}
+@keyframes sglow-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes sglow-breathe {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.04);
+  }
 }
 
 /* text region — auto-height open via grid-rows trick; region fades as a whole */
@@ -239,8 +308,11 @@
 }
 .stext-cap {
   /* Vertical counterpart of the .scard clamp: show fewer lines rather than clip.
-     20px = cap padding (12) + card borders (2) + 6px slack for zoom rounding. */
-  max-height: min(var(--ov-cap-max-h), calc(100vh - var(--ov-base-h) - 20px));
+     18px = cap padding (12) + 6px slack for zoom rounding. */
+  max-height: min(
+    var(--ov-cap-max-h),
+    calc(100vh - var(--ov-pill-h) - var(--ov-edge-pad) - 18px)
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
   display: flex;
@@ -290,60 +362,60 @@
   }
 }
 
-/* base row — dot (left) | waveform (center) | timer + cancel (right).
-   Same structure for pill & panel; the dot stays anchored left in both. */
+/* base row — icon | waveform | timer + cancel (or icon | label | cancel). One
+   layout for every form; the card clips it. In the circle the row is a square,
+   the icon centered and everything after it clipped/faded out. */
 .sbase {
-  height: var(--ov-base-h);
+  box-sizing: border-box;
+  height: calc(var(--ov-pill-h) - 2px); /* card borders */
   flex: none; /* the control row never squashes; only the text region gives */
-  padding: 0 10px;
-  display: grid;
-  /* Equal side columns (min 22px to hold the cancel button) keep the center item
-     — waveform or label — centered whether the pill is at min width or content-
-     sized. */
-  grid-template-columns: minmax(22px, 1fr) auto minmax(22px, 1fr);
-  align-items: center;
-}
-.sbase-l {
   display: flex;
-  padding-left: 5px;
   align-items: center;
-  justify-self: start;
+  padding-inline: 5px;
+  color: var(--color-text);
+  transition:
+    height var(--ov-grow),
+    padding var(--ov-grow);
+}
+.scard.circle .sbase {
+  height: calc(var(--ov-circle) - 2px);
+  padding-inline-start: 8px; /* (38 - 22) / 2: centers the icon */
 }
 .sbase-r {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-self: end;
-}
-.sdot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
   flex: none;
-  box-sizing: border-box;
-  transition:
-    background-color 180ms ease,
-    opacity 180ms ease;
+  margin-inline-start: auto;
+  transition: opacity 200ms ease-out;
 }
-.sdot.ready {
-  background: var(--s-accent);
-  opacity: 1;
-  animation: sdot-pulse 1.9s infinite;
+.scard.circle .sbase-r,
+.scard.circle .swork-label {
+  opacity: 0;
+  pointer-events: none;
 }
-/* A quiet neutral dot while the host has not delivered its first sample yet. */
-.sdot.arming {
-  background: var(--s-muted);
+
+/* The mark: dimmed until the first microphone sample arrives, pulsing while the
+   transcript is being worked on. */
+.sicon {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: block;
+  transition: opacity 200ms ease-out;
+}
+.scard.arming .sicon {
   opacity: 0.45;
-  animation: none;
 }
-@keyframes sdot-pulse {
-  0% {
-    box-shadow: 0 0 0 0 var(--s-accent-soft);
-  }
-  70% {
-    box-shadow: 0 0 0 7px transparent;
+.scard.busy .sicon {
+  animation: sicon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes sicon-pulse {
+  50% {
+    opacity: 0.45;
   }
 }
+
 .stimer {
   font-size: 12px;
   color: var(--s-faint);
@@ -356,58 +428,44 @@
   opacity: 1;
 }
 
-/* Waveform — reactive only after the first microphone callback. While arming,
-   a muted travelling pulse acknowledges the shortcut without pretending that
-   audio levels are already being received. */
+/* Waveform — a scrolling history of mic levels (OverlayWaveform.tsx), revealed
+   only once the pill has settled. While arming, a muted ripple acknowledges the
+   shortcut without pretending audio levels are already being received. */
 .swave {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 3px;
-  padding-right: 8px;
-  height: 18px;
+  width: 52px;
+  height: 24px;
+  margin-inline: 8px;
   flex: none;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.scard.wave-in .swave {
+  opacity: 1;
 }
 .swave i {
-  width: 4px;
-  min-height: 3px;
-  max-height: 18px;
-  border-radius: 2px;
-  background: var(--s-accent);
-  transition:
-    height 80ms linear,
-    background-color 180ms ease,
-    opacity 180ms ease;
+  width: 2px;
+  height: 4px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: height 75ms ease-out;
 }
 .swave.arming i {
-  height: 6px !important;
-  background: var(--s-muted);
   opacity: 0.35;
   animation: swave-arming 900ms ease-in-out infinite;
-}
-.swave.arming i:nth-child(2),
-.swave.arming i:nth-child(8) {
-  animation-delay: 75ms;
-}
-.swave.arming i:nth-child(3),
-.swave.arming i:nth-child(7) {
-  animation-delay: 150ms;
-}
-.swave.arming i:nth-child(4),
-.swave.arming i:nth-child(6) {
-  animation-delay: 225ms;
-}
-.swave.arming i:nth-child(5) {
-  animation-delay: 300ms;
 }
 @keyframes swave-arming {
   0%,
   100% {
-    transform: scaleY(0.55);
+    transform: scaleY(0.8);
     opacity: 0.25;
   }
   50% {
-    transform: scaleY(1.5);
-    opacity: 0.7;
+    transform: scaleY(2);
+    opacity: 0.6;
   }
 }
 .sx {
@@ -444,28 +502,25 @@
   transform: scale(0.95);
 }
 
-/* working state (transcribing / polishing) — spinner + label */
-.sspinner {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: 2px solid var(--s-hair);
-  border-top-color: var(--s-accent);
-  animation: sspin 0.7s linear infinite;
-  flex: none;
-}
-@keyframes sspin {
-  to {
-    transform: rotate(1turn);
-  }
-}
+/* working label (model loading in the labelled pill, or the open Live panel) */
 .swork-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 8px;
   font-size: 12px;
   color: var(--s-muted);
+  text-align: center;
   white-space: nowrap;
-  padding: 0 8px; /* breathing room from the spinner / cancel when content-sized */
-  /* Safety net: ellipsize rather than clip if a label exceeds the max pill width. */
-  min-width: 0;
+  /* Safety net: ellipsize rather than clip if a label exceeds the pill width. */
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ov-stage *,
+  .ov-stage *::before {
+    animation: none !important;
+    transition: none !important;
+  }
 }

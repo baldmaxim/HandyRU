@@ -1,5 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
@@ -12,12 +18,24 @@ import type {
 import i18n, { syncLanguageFromSettings } from "@/i18n";
 import type { ModelStateEvent } from "@/lib/types/events";
 import { getLanguageDirection } from "@/lib/utils/rtl";
+import OverlayIcon from "./OverlayIcon";
+import OverlayWaveform from "./OverlayWaveform";
 
 type OverlayState = "recording" | "streaming" | "transcribing" | "processing";
 
-// Number of reactive bars in the waveform (the simple, smoothed style shared by
-// every overlay form). Mic levels arrive as 16 FFT buckets; we take the first N.
-const WAVE_BARS = 9;
+type EntrancePhase = "circle" | "pill" | "wave";
+
+// Mic levels arrive as 16 FFT buckets; the scrolling waveform needs one level, so
+// average the low/mid buckets where speech energy sits.
+const LEVEL_BUCKETS = 12;
+
+// Entrance choreography (OpenWhispr-style): the mark pops in as a circle and
+// holds for a beat that reads as an acknowledged press, the circle grows into the
+// pill, then the waveform fades in once the footprint has settled. Keep
+// ENTRANCE_GROW_MS in sync with --ov-grow in RecordingOverlay.css.
+const ENTRANCE_HOLD_MS = 260;
+const ENTRANCE_GROW_MS = 300;
+const WAVE_REVEAL_DELAY_MS = 100;
 
 // Only call out a model load in the Live preview once it has run this long.
 // Warm loads finish in well under this (~0.2s on Apple Silicon, ~1.5s on a
@@ -28,6 +46,10 @@ const SLOW_MODEL_LOAD_MS = 2000;
 const RecordingOverlay: React.FC = () => {
   const { t } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
+  // Set by hide-overlay: the card plays its exit while the native window waits
+  // out its hide delay (overlay.rs), instead of vanishing on the spot.
+  const [leaving, setLeaving] = useState(false);
+  const [entrance, setEntrance] = useState<EntrancePhase>("wave");
   const [state, setState] = useState<OverlayState>("recording");
   // `Stream::play()` returning does not mean hardware callbacks are flowing.
   // Stay visually in an arming state until the backend processes the first
@@ -44,7 +66,6 @@ const RecordingOverlay: React.FC = () => {
   // Latched per Live session: once the loading notice has opened the panel, keep
   // it open after the load so it doesn't collapse and reopen when text arrives.
   const [loadNoticeShown, setLoadNoticeShown] = useState(false);
-  const [levels, setLevels] = useState<number[]>(Array(WAVE_BARS).fill(0));
   const [streamText, setStreamText] = useState<StreamTextEvent>({
     committed: "",
     tentative: "",
@@ -52,8 +73,9 @@ const RecordingOverlay: React.FC = () => {
   const [phase, setPhase] = useState<StreamPhase>("listening");
   const [workKind, setWorkKind] = useState<StreamWorkKind>("transcribing");
   const [elapsed, setElapsed] = useState(0);
-  // Bumped on each new streaming session so the Live card remounts fresh (replays
-  // the pop-in, and never animates in from the previous panel's open size).
+  // Bumped on each new recording/streaming session so the card remounts fresh
+  // (replays the entrance, and never animates in from the previous panel's open
+  // size).
   const [session, setSession] = useState(0);
   // Overlay placement (top vs bottom of the screen). The Live panel grows downward
   // from a top overlay (oldest line under the pill) and upward from a bottom one.
@@ -62,7 +84,9 @@ const RecordingOverlay: React.FC = () => {
   // while overflowing, so the resting first line stays crisp flush under the pill.
   const [overflowing, setOverflowing] = useState(false);
 
-  const smoothedLevelsRef = useRef<number[]>(Array(16).fill(0));
+  // Written on every mic-level event, sampled by the waveform's own rAF loop, so
+  // levels never re-render the overlay.
+  const levelRef = useRef(0);
   // Live-text scroll-back: the text region "sticks" to the newest line while the
   // user is at the bottom; if they scroll up to read history, auto-follow pauses
   // until they scroll back down.
@@ -79,8 +103,7 @@ const RecordingOverlay: React.FC = () => {
         // them would overwrite that event and leave the overlay stuck arming.
         if (overlayState === "recording" || overlayState === "streaming") {
           setCaptureReady(false);
-          smoothedLevelsRef.current = Array(16).fill(0);
-          setLevels(Array(WAVE_BARS).fill(0));
+          levelRef.current = 0;
           setStreamText({ committed: "", tentative: "" });
         }
 
@@ -103,13 +126,18 @@ const RecordingOverlay: React.FC = () => {
           setWorkKind("transcribing");
           setElapsed(0);
           setLoadNoticeShown(false);
+        }
+        if (overlayState === "recording" || overlayState === "streaming") {
+          setEntrance("circle");
           setSession((s) => s + 1); // remount the card fresh for this session
         }
+        setLeaving(false);
         setIsVisible(true);
       });
 
       const unlistenHide = await listen("hide-overlay", () => {
         setIsVisible(false);
+        setLeaving(true);
         setCaptureReady(false);
       });
 
@@ -119,15 +147,11 @@ const RecordingOverlay: React.FC = () => {
       });
 
       const unlistenLevel = await listen<number[]>("mic-level", (event) => {
-        const newLevels = event.payload as number[];
-        // Exponential smoothing across the 16 buckets, then take the first N
-        // bars for the shared waveform.
-        const smoothed = smoothedLevelsRef.current.map((prev, i) => {
-          const target = newLevels[i] || 0;
-          return prev * 0.7 + target * 0.3;
-        });
-        smoothedLevelsRef.current = smoothed;
-        setLevels(smoothed.slice(0, WAVE_BARS));
+        const buckets = event.payload;
+        let sum = 0;
+        for (let i = 0; i < LEVEL_BUCKETS; i++) sum += buckets[i] || 0;
+        // Light exponential smoothing; the waveform samples this every 80ms.
+        levelRef.current = levelRef.current * 0.5 + (sum / LEVEL_BUCKETS) * 0.5;
       });
 
       const unlistenStream = await events.streamTextEvent.listen((event) => {
@@ -211,7 +235,29 @@ const RecordingOverlay: React.FC = () => {
     setOverflowing(false);
   }, [session]);
 
-  if (!isVisible) return null;
+  // Run the entrance timeline for each new session (show-overlay already reset
+  // the phase to "circle" so the first frame is never the expanded pill).
+  useEffect(() => {
+    if (session === 0) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setEntrance("wave");
+      return;
+    }
+    const grow = setTimeout(() => setEntrance("pill"), ENTRANCE_HOLD_MS);
+    const reveal = setTimeout(
+      () => setEntrance("wave"),
+      ENTRANCE_HOLD_MS + ENTRANCE_GROW_MS + WAVE_REVEAL_DELAY_MS,
+    );
+    return () => {
+      clearTimeout(grow);
+      clearTimeout(reveal);
+    };
+  }, [session]);
+
+  const getLevel = useCallback(() => levelRef.current, []);
+
+  // Rendered through the exit too; only the never-shown overlay is empty.
+  if (!isVisible && !leaving) return null;
 
   // Re-pin when the user is within ~a line of the bottom; unpin otherwise.
   const handleStreamScroll = () => {
@@ -228,19 +274,6 @@ const RecordingOverlay: React.FC = () => {
     : t("overlay.transcribing");
 
   // ---- Shared building blocks (one visual language for every overlay form) ----
-  const waveform = (
-    <div className={`swave ${captureReady ? "ready" : "arming"}`}>
-      {levels.map((v, i) => (
-        <i
-          key={i}
-          style={{
-            height: `${Math.max(3, Math.min(18, 3 + Math.pow(v, 0.7) * 15))}px`,
-          }}
-        />
-      ))}
-    </div>
-  );
-
   const cancelBtn = (
     <button
       className="sx"
@@ -258,32 +291,53 @@ const RecordingOverlay: React.FC = () => {
     </button>
   );
 
-  // dot (left) | waveform (center) | timer + cancel (right) — same structure for
-  // pill & panel, so the Live morph is a pure width change.
-  const listeningRow = (showTimer: boolean, showCancel: boolean) => (
+  // icon | waveform | timer + cancel. Every form keeps this one layout and the
+  // card's width does the morphing: the card clips the row, so the icon glides
+  // from the circle's centre to the pill's inset as it grows.
+  const listeningRow = (showTimer: boolean) => (
     <div className="sbase">
-      <div className="sbase-l">
-        <span className={`sdot ${captureReady ? "ready" : "arming"}`} />
-      </div>
-      {waveform}
+      <OverlayIcon className="sicon" />
+      <OverlayWaveform getLevel={getLevel} active={captureReady} />
       <div className="sbase-r">
         {showTimer && <span className="stimer">{fmtTime(elapsed)}</span>}
-        {showCancel && cancelBtn}
+        {cancelBtn}
       </div>
     </div>
   );
 
-  // spinner (left) | label (center) | cancel (right) — same 3-zone grid as the
-  // listening row, so the label is centered.
-  const workingRow = (label: string, showCancel: boolean) => (
+  // icon (pulsing) | label | cancel — the icon is the same first child as in the
+  // listening row, so React keeps its node across the switch.
+  const workingRow = (label: string) => (
     <div className="sbase">
-      <div className="sbase-l">
-        <span className="sspinner" />
-      </div>
+      <OverlayIcon className="sicon" />
       <span className="swork-label">{label}</span>
-      <div className="sbase-r">{showCancel && cancelBtn}</div>
+      <div className="sbase-r">{cancelBtn}</div>
     </div>
   );
+
+  // The glow sits behind the card (the opaque card covers its centre), so only a
+  // thin orbiting rim plus a soft halo show around whatever shape the card has.
+  const stage = (
+    cardClass: string,
+    glow: boolean,
+    children: React.ReactNode,
+  ) => (
+    <div dir={direction} className={`ov-stage ${position}`}>
+      <div key={session} className={`sshell ${leaving ? "leaving" : ""}`}>
+        <span className={`sglow ${glow ? "on" : ""}`} aria-hidden="true">
+          <span className="sglow-ring">
+            <span className="sglow-rotor" />
+          </span>
+        </span>
+        <div className={`scard ${cardClass}`}>{children}</div>
+      </div>
+    </div>
+  );
+
+  const cardClasses = (flags: Record<string, boolean>) =>
+    Object.keys(flags)
+      .filter((name) => flags[name])
+      .join(" ");
 
   // ---- Live overlay: a pill that sculpts open into a panel ----
   if (state === "streaming") {
@@ -294,75 +348,75 @@ const RecordingOverlay: React.FC = () => {
     // text would be, so speech that isn't transcribing yet doesn't look ignored.
     const loadingNotice = modelLoadSlow && !working && !hasText;
     // Keep the panel open whenever there's text — even while finalizing — so the
-    // transcript stays put under a working spinner instead of collapsing and
-    // squishing the text mid-stream. Only fall back to the small working pill
-    // when there was no text to preserve.
+    // transcript stays put under a working label instead of collapsing and
+    // squishing the text mid-stream.
     const open = hasText || loadingNotice || (loadNoticeShown && !working);
-    const collapsed = working && !hasText;
+    // With nothing to keep on screen, finalizing folds back into the glowing
+    // circle — unless a model load is the wait, which a labelled pill calls out.
+    const labeled = working && !open && modelLoading;
+    const circle = !open && !labeled && (working || entrance === "circle");
 
-    return (
-      <div dir={direction} className={`ov-stage ${position}`}>
-        <div
-          key={session}
-          className={`scard ${open ? "open" : ""} ${collapsed ? "working" : ""} ${
-            isVisible ? "" : "leaving"
-          }`}
-        >
-          <div className="stext">
-            <div className="stext-clip">
-              <div
-                className={`stext-cap ${overflowing ? "overflowing" : ""}`}
-                ref={capRef}
-                onScroll={handleStreamScroll}
-              >
-                <p>
-                  {loadingNotice && (
-                    <span className="sloading">
-                      {t("overlay.loadingModel")}
-                    </span>
-                  )}
-                  <span className="committed">
-                    {streamText.committed ? streamText.committed + " " : ""}
-                  </span>
-                  <span className="tentative">{streamText.tentative}</span>
-                  {/* Drop the blinking caret once finalizing — it's no longer
-                      capturing, and a static spinner conveys the work. */}
-                  {!working && !loadingNotice && <span className="scaret" />}
-                </p>
-              </div>
+    return stage(
+      cardClasses({
+        open,
+        circle,
+        labeled,
+        busy: working,
+        arming: !working && !captureReady,
+        "wave-in": entrance === "wave",
+      }),
+      working && !open,
+      <>
+        <div className="stext">
+          <div className="stext-clip">
+            <div
+              className={`stext-cap ${overflowing ? "overflowing" : ""}`}
+              ref={capRef}
+              onScroll={handleStreamScroll}
+            >
+              <p>
+                {loadingNotice && (
+                  <span className="sloading">{t("overlay.loadingModel")}</span>
+                )}
+                <span className="committed">
+                  {streamText.committed ? streamText.committed + " " : ""}
+                </span>
+                <span className="tentative">{streamText.tentative}</span>
+                {/* Drop the blinking caret once finalizing — it's no longer
+                    capturing, and the pulsing mark conveys the work. */}
+                {!working && !loadingNotice && <span className="scaret" />}
+              </p>
             </div>
           </div>
-          {working
-            ? workingRow(
-                workKind === "polishing"
-                  ? t("overlay.processing")
-                  : transcribingLabel,
-                true,
-              )
-            : listeningRow(open, true)}
         </div>
-      </div>
+        {working
+          ? workingRow(
+              workKind === "polishing"
+                ? t("overlay.processing")
+                : transcribingLabel,
+            )
+          : listeningRow(open)}
+      </>,
     );
   }
 
-  // ---- Minimal overlay: exactly one row at a time — waveform (recording), or a
-  // spinner + label (transcribing / processing). Never both. The pill animates its
-  // width between them; the cancel button is in both rows so it stays put.
+  // ---- Minimal overlay: the circle grows into the listening pill; finalizing
+  // folds it back into a glowing circle (a labelled pill while a model loads).
   const working = state === "transcribing" || state === "processing";
   const workLabel =
     state === "processing" ? t("overlay.processing") : transcribingLabel;
+  const labeled = working && modelLoading;
 
-  return (
-    <div
-      dir={direction}
-      className={`ov-stage ${position} ov-fade ${isVisible ? "show" : ""}`}
-    >
-      <div
-        className={`scard compact ${working && isVisible ? "cworking" : ""}`}
-      >
-        {working ? workingRow(workLabel, true) : listeningRow(false, true)}
-      </div>
-    </div>
+  return stage(
+    cardClasses({
+      circle: !labeled && (working || entrance === "circle"),
+      labeled,
+      busy: working,
+      arming: !working && !captureReady,
+      "wave-in": entrance === "wave",
+    }),
+    working,
+    working ? workingRow(workLabel) : listeningRow(false),
   );
 };
 
