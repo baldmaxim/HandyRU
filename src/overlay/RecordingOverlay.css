@@ -115,23 +115,31 @@
 
 /* ============================================================
    Unified overlay stage — one fixed, transparent container shared by the compact
-   pill and the Live panel (both render the same `.sshell > .scard`). The card is
-   anchored to the screen's right edge and to its bottom (or top, when placed up
-   top), --ov-edge-pad inside the window on both, so only the offsets in
-   overlay.rs move it. It grows leftward from there.
+   pill and the Live panel (both render the same `.sshell > .scard`). The window
+   sits on the screen grid cell chosen in settings (overlay.rs); inside it the
+   card hugs the matching side(s), --ov-edge-pad in, so it grows away from the
+   screen edge it's pinned to. Vertically, top hugs the top; bottom and centre
+   hug the bottom, so the Live panel grows upward.
    ============================================================ */
 .ov-stage {
   position: fixed;
   inset: 0;
   display: flex;
-  /* Physical right regardless of UI language: the shell carries `dir`, the stage
-     stays LTR so flex-end is always the screen's right. */
+  /* Physical sides regardless of UI language: the shell carries `dir`, the stage
+     stays LTR so flex-start/end are always the screen's left/right. */
   direction: ltr;
-  justify-content: flex-end;
-  align-items: flex-end; /* bottom placement */
-  padding-right: var(--ov-edge-pad);
+  justify-content: center;
+  align-items: flex-end; /* bottom / centre placement */
   padding-bottom: var(--ov-edge-pad);
   font-family: var(--s-font);
+}
+.ov-stage.h-left {
+  justify-content: flex-start;
+  padding-left: var(--ov-edge-pad);
+}
+.ov-stage.h-right {
+  justify-content: flex-end;
+  padding-right: var(--ov-edge-pad);
 }
 .ov-stage.top {
   align-items: flex-start; /* top placement */

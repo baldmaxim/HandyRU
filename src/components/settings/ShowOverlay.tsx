@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Dropdown } from "../ui/Dropdown";
 import { SettingContainer } from "../ui/SettingContainer";
 import { useSettings } from "../../hooks/useSettings";
+import { OverlayPositionPicker } from "./OverlayPositionPicker";
 import type { OverlayPosition, OverlayStyle } from "@/bindings";
 
 interface ShowOverlayProps {
@@ -30,23 +31,11 @@ export const ShowOverlay: React.FC<ShowOverlayProps> = React.memo(
       },
     ];
 
-    const positionOptions = [
-      {
-        value: "bottom",
-        label: t("settings.advanced.overlay.position.options.bottom"),
-      },
-      {
-        value: "top",
-        label: t("settings.advanced.overlay.position.options.top"),
-      },
-    ];
-
     const selectedStyle = (getSetting("overlay_style") ||
       "live") as OverlayStyle;
-    // Only "top" and "bottom" are selectable; anything else (empty, or a legacy
-    // "none" from before the position was retired) falls back to "bottom".
+    // The backend folds legacy values ("top", "bottom", "none") onto the grid.
     const selectedPosition: OverlayPosition =
-      getSetting("overlay_position") === "top" ? "top" : "bottom";
+      getSetting("overlay_position") || "bottom_right";
 
     return (
       <>
@@ -73,11 +62,10 @@ export const ShowOverlay: React.FC<ShowOverlayProps> = React.memo(
             descriptionMode={descriptionMode}
             grouped={grouped}
           >
-            <Dropdown
-              options={positionOptions}
-              selectedValue={selectedPosition}
-              onSelect={(value) =>
-                updateSetting("overlay_position", value as OverlayPosition)
+            <OverlayPositionPicker
+              value={selectedPosition}
+              onChange={(position) =>
+                updateSetting("overlay_position", position)
               }
               disabled={isUpdating("overlay_position")}
             />

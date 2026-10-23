@@ -293,8 +293,15 @@
           "title": "悬浮窗位置",
           "description": "在录制和转录期间显示可视反馈悬浮窗。在 Linux 上建议选择「无」。",
           "options": {
-            "bottom": "底部",
-            "top": "顶部"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

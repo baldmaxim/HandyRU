@@ -293,8 +293,15 @@
           "title": "オーバーレイの位置",
           "description": "録音と文字起こし中に表示するオーバーレイが表示される位置を選択します。",
           "options": {
-            "bottom": "下",
-            "top": "上"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

@@ -293,8 +293,15 @@
           "title": "Позиция на наслагването",
           "description": "Показване на визуална обратна връзка при запис и транскрипция. На Linux се препоръчва „Няма“.",
           "options": {
-            "bottom": "Долу",
-            "top": "Горе"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

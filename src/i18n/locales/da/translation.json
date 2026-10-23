@@ -293,8 +293,15 @@
           "title": "Overlay-placering",
           "description": "Hvor overlayet vises på skærmen under optagelse og transskription.",
           "options": {
-            "bottom": "Bund",
-            "top": "Top"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

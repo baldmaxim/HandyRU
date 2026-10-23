@@ -121,16 +121,28 @@ pub struct PostProcessProvider {
     pub api_format: PostProcessApiFormat,
 }
 
+/// Where on screen the overlay sits: any cell of a 3×3 grid (corners, edge
+/// midpoints, centre).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Type)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum OverlayPosition {
-    Top,
+    TopLeft,
+    TopCenter,
+    // Before the grid the only choices were "top" and "bottom", which HandyRU
+    // placed in the right corner, so stored values keep meaning that.
+    #[serde(alias = "top")]
+    TopRight,
+    CenterLeft,
+    Center,
+    CenterRight,
+    BottomLeft,
+    BottomCenter,
     // `none` is retired: overlay visibility is owned by `OverlayStyle` now. The
     // alias keeps legacy stores (`"overlay_position": "none"`) deserializing
     // instead of failing the whole load; the one-time overlay migration reads the
     // raw stored string to recover the old "hidden" intent as `OverlayStyle::None`.
-    #[serde(alias = "none")]
-    Bottom,
+    #[serde(alias = "bottom", alias = "none")]
+    BottomRight,
 }
 
 /// Which recording overlay to display. `Minimal` and `Live` share one base
@@ -594,7 +606,7 @@ fn default_selected_language() -> String {
 fn default_overlay_position() -> OverlayPosition {
     // Position only matters when the overlay is shown; whether it shows at all is
     // `overlay_style` (Linux defaults that to None). So a single default suffices.
-    OverlayPosition::Bottom
+    OverlayPosition::BottomRight
 }
 
 fn default_overlay_style() -> OverlayStyle {
@@ -1656,18 +1668,37 @@ mod tests {
     #[test]
     fn legacy_none_overlay_position_deserializes_to_bottom() {
         // A persisted "none" must not fail the whole settings load; the serde
-        // alias folds it onto Bottom (visibility is owned by overlay_style).
+        // alias folds it onto BottomRight (visibility is owned by overlay_style).
         let raw = serde_json::json!({ "overlay_position": "none" });
         let position: OverlayPosition =
             serde_json::from_value(raw.get("overlay_position").unwrap().clone())
                 .expect("legacy \"none\" should deserialize, not error");
-        assert_eq!(position, OverlayPosition::Bottom);
+        assert_eq!(position, OverlayPosition::BottomRight);
+    }
+
+    #[test]
+    fn legacy_top_bottom_overlay_positions_keep_the_right_corner() {
+        for (raw, expected) in [
+            ("top", OverlayPosition::TopRight),
+            ("bottom", OverlayPosition::BottomRight),
+        ] {
+            let position: OverlayPosition =
+                serde_json::from_value(serde_json::Value::String(raw.into())).unwrap();
+            assert_eq!(position, expected);
+        }
+        let grid: OverlayPosition =
+            serde_json::from_value(serde_json::Value::String("center_left".into())).unwrap();
+        assert_eq!(grid, OverlayPosition::CenterLeft);
+        assert_eq!(
+            serde_json::to_value(OverlayPosition::BottomCenter).unwrap(),
+            "bottom_center"
+        );
     }
 
     #[test]
     fn overlay_migration_promotes_enabled_overlay_to_live() {
         let mut settings = get_default_settings();
-        settings.overlay_position = OverlayPosition::Top;
+        settings.overlay_position = OverlayPosition::TopRight;
         settings.overlay_style = OverlayStyle::Minimal;
 
         let raw = serde_json::json!({
@@ -1677,7 +1708,7 @@ mod tests {
 
         assert!(apply_settings_migrations(&mut settings, &raw));
         assert_eq!(settings.overlay_style, OverlayStyle::Live);
-        assert_eq!(settings.overlay_position, OverlayPosition::Top);
+        assert_eq!(settings.overlay_position, OverlayPosition::TopRight);
     }
 
     #[test]

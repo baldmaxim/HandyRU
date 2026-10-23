@@ -263,8 +263,15 @@
           "title": "موقع التراكب",
           "description": "عرض تراكب الملاحظات المرئية أثناء التسجيل والتفريغ. على نظام Linux يوصى بـ 'بلا'.",
           "options": {
-            "bottom": "أسفل",
-            "top": "أعلى"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

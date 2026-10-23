@@ -293,8 +293,15 @@
           "title": "ओभरले स्थिति",
           "description": "रेकर्डिङ र ट्रान्सक्रिप्सनका बेला ओभरले स्क्रिनमा कहाँ देखिन्छ।",
           "options": {
-            "bottom": "तल",
-            "top": "माथि"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

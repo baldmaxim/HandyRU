@@ -78,29 +78,96 @@ const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
 
-// The overlay sits in the screen's right corner (OpenWhispr-style); the card is
-// another --ov-edge-pad inside the window.
-const OVERLAY_RIGHT_OFFSET: f64 = 12.0;
+// Gap between the window and a left/right screen edge; the card is another
+// --ov-edge-pad inside the window.
+const OVERLAY_SIDE_OFFSET: f64 = 12.0;
 
-/// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
+/// Where the overlay sits along one screen axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AxisAnchor {
+    /// Left or top edge.
+    Start,
+    Center,
+    /// Right or bottom edge.
+    End,
+}
+
+/// (horizontal, vertical) anchors for a grid position.
+fn overlay_anchors(position: OverlayPosition) -> (AxisAnchor, AxisAnchor) {
+    use AxisAnchor::{Center, End, Start};
+    match position {
+        OverlayPosition::TopLeft => (Start, Start),
+        OverlayPosition::TopCenter => (Center, Start),
+        OverlayPosition::TopRight => (End, Start),
+        OverlayPosition::CenterLeft => (Start, Center),
+        OverlayPosition::Center => (Center, Center),
+        OverlayPosition::CenterRight => (End, Center),
+        OverlayPosition::BottomLeft => (Start, End),
+        OverlayPosition::BottomCenter => (Center, End),
+        OverlayPosition::BottomRight => (End, End),
+    }
+}
+
+/// Window start coordinate along one axis whose usable span is `[lo, hi)`:
+/// `start_offset` in from the start edge, `end_offset` in from the end edge, or
+/// centred.
+fn place_on_axis(
+    anchor: AxisAnchor,
+    lo: f64,
+    hi: f64,
+    size: f64,
+    start_offset: f64,
+    end_offset: f64,
+) -> f64 {
+    match anchor {
+        AxisAnchor::Start => lo + start_offset,
+        AxisAnchor::Center => lo + (hi - lo - size) / 2.0,
+        AxisAnchor::End => hi - size - end_offset,
+    }
+}
+
+/// Anchors one axis of a GTK layer surface: pinned to one edge with a margin, or
+/// to neither, which gtk-layer-shell centres.
+#[cfg(target_os = "linux")]
+fn anchor_layer_shell_axis(
+    gtk_window: &gtk::ApplicationWindow,
+    (start_edge, end_edge): (Edge, Edge),
+    anchor: AxisAnchor,
+    (start_margin, end_margin): (f64, f64),
+) {
+    let at_start = anchor == AxisAnchor::Start;
+    let at_end = anchor == AxisAnchor::End;
+    gtk_window.set_anchor(start_edge, at_start);
+    gtk_window.set_anchor(end_edge, at_end);
+    gtk_window.set_layer_shell_margin(
+        start_edge,
+        if at_start {
+            start_margin.round() as i32
+        } else {
+            0
+        },
+    );
+    gtk_window.set_layer_shell_margin(end_edge, if at_end { end_margin.round() as i32 } else { 0 });
+}
+
+/// Configures the edges and offsets of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
 /// mapped, so changing position does not require a manual hide/show cycle.
 #[cfg(target_os = "linux")]
 fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position: OverlayPosition) {
-    let (edge, opposite_edge, margin) = match position {
-        OverlayPosition::Top => (Edge::Top, Edge::Bottom, OVERLAY_TOP_OFFSET),
-        OverlayPosition::Bottom => (Edge::Bottom, Edge::Top, OVERLAY_BOTTOM_OFFSET),
-    };
-
-    gtk_window.set_anchor(edge, true);
-    gtk_window.set_anchor(opposite_edge, false);
-    gtk_window.set_layer_shell_margin(edge, margin.round() as i32);
-    gtk_window.set_layer_shell_margin(opposite_edge, 0);
-
-    gtk_window.set_anchor(Edge::Right, true);
-    gtk_window.set_anchor(Edge::Left, false);
-    gtk_window.set_layer_shell_margin(Edge::Right, OVERLAY_RIGHT_OFFSET.round() as i32);
-    gtk_window.set_layer_shell_margin(Edge::Left, 0);
+    let (horizontal, vertical) = overlay_anchors(position);
+    anchor_layer_shell_axis(
+        gtk_window,
+        (Edge::Left, Edge::Right),
+        horizontal,
+        (OVERLAY_SIDE_OFFSET, OVERLAY_SIDE_OFFSET),
+    );
+    anchor_layer_shell_axis(
+        gtk_window,
+        (Edge::Top, Edge::Bottom),
+        vertical,
+        (OVERLAY_TOP_OFFSET, OVERLAY_BOTTOM_OFFSET),
+    );
 }
 
 /// Configures a GTK layer surface before it is shown.
@@ -264,34 +331,47 @@ fn calculate_overlay_position(
     let monitor_y = monitor.position().y as f64 / scale;
 
     let settings = settings::get_settings(app_handle);
+    let (horizontal, vertical) = overlay_anchors(settings.overlay_position);
 
-    // work_area.position shares monitor.position's global coordinate space. On
-    // macOS the work area keeps the overlay clear of a Dock placed on the right.
+    // work_area.position shares monitor.position's global coordinate space, so
+    // no monitor offset is added. On macOS the work area keeps the overlay clear
+    // of the Dock; the top stays monitor-relative (OVERLAY_TOP_OFFSET already
+    // clears the menu bar).
     #[cfg(target_os = "macos")]
-    let right = {
+    let (left, right, bottom) = {
         let wa = monitor.work_area();
-        (wa.position.x as f64 + wa.size.width as f64) / scale
+        (
+            wa.position.x as f64 / scale,
+            (wa.position.x as f64 + wa.size.width as f64) / scale,
+            (wa.position.y as f64 + wa.size.height as f64) / scale,
+        )
     };
     #[cfg(not(target_os = "macos"))]
-    let right = (monitor.position().x as f64 + monitor.size().width as f64) / scale;
-
-    let x = right - width - OVERLAY_RIGHT_OFFSET;
-    let y = match settings.overlay_position {
-        OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
-        OverlayPosition::Bottom => {
-            // work_area.position shares monitor.position's global coordinate
-            // space, so no monitor offset is added.
-            #[cfg(target_os = "macos")]
-            let bottom = {
-                let wa = monitor.work_area();
-                (wa.position.y as f64 + wa.size.height as f64) / scale
-            };
-            #[cfg(not(target_os = "macos"))]
-            let bottom = monitor_y + monitor.size().height as f64 / scale;
-
-            bottom - height - OVERLAY_BOTTOM_OFFSET
-        }
+    let (left, right, bottom) = {
+        let left = monitor.position().x as f64 / scale;
+        (
+            left,
+            left + monitor.size().width as f64 / scale,
+            monitor_y + monitor.size().height as f64 / scale,
+        )
     };
+
+    let x = place_on_axis(
+        horizontal,
+        left,
+        right,
+        width,
+        OVERLAY_SIDE_OFFSET,
+        OVERLAY_SIDE_OFFSET,
+    );
+    let y = place_on_axis(
+        vertical,
+        monitor_y,
+        bottom,
+        height,
+        OVERLAY_TOP_OFFSET,
+        OVERLAY_BOTTOM_OFFSET,
+    );
 
     Some((x, y))
 }
@@ -337,19 +417,27 @@ fn windows_overlay_bounds(
     let content_scale = scale * text_scale;
     let width = (logical_width * content_scale).round().max(1.0) as i32;
     let height = (logical_height * content_scale).round().max(1.0) as i32;
-    let x = (monitor_position.x as f64 + monitor_size.width as f64
-        - width as f64
-        - OVERLAY_RIGHT_OFFSET * scale)
-        .round() as i32;
-    let y = match overlay_position {
-        OverlayPosition::Top => {
-            (monitor_position.y as f64 + OVERLAY_TOP_OFFSET * scale).round() as i32
-        }
-        OverlayPosition::Bottom => (monitor_position.y as f64 + monitor_size.height as f64
-            - height as f64
-            - OVERLAY_BOTTOM_OFFSET * scale)
-            .round() as i32,
-    };
+    let (horizontal, vertical) = overlay_anchors(overlay_position);
+    let left = monitor_position.x as f64;
+    let top = monitor_position.y as f64;
+    let x = place_on_axis(
+        horizontal,
+        left,
+        left + monitor_size.width as f64,
+        width as f64,
+        OVERLAY_SIDE_OFFSET * scale,
+        OVERLAY_SIDE_OFFSET * scale,
+    )
+    .round() as i32;
+    let y = place_on_axis(
+        vertical,
+        top,
+        top + monitor_size.height as f64,
+        height as f64,
+        OVERLAY_TOP_OFFSET * scale,
+        OVERLAY_BOTTOM_OFFSET * scale,
+    )
+    .round() as i32;
 
     (x, y, width, height)
 }
@@ -792,6 +880,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn place_on_axis_pins_edges_and_centres() {
+        // A 100-wide window on a 1000-wide span starting at -500.
+        assert_eq!(
+            place_on_axis(AxisAnchor::Start, -500.0, 500.0, 100.0, 12.0, 40.0),
+            -488.0
+        );
+        assert_eq!(
+            place_on_axis(AxisAnchor::Center, -500.0, 500.0, 100.0, 12.0, 40.0),
+            -50.0
+        );
+        assert_eq!(
+            place_on_axis(AxisAnchor::End, -500.0, 500.0, 100.0, 12.0, 40.0),
+            360.0
+        );
+    }
+
+    #[test]
+    fn overlay_anchors_cover_the_grid() {
+        use AxisAnchor::{Center, End, Start};
+        assert_eq!(overlay_anchors(OverlayPosition::TopLeft), (Start, Start));
+        assert_eq!(overlay_anchors(OverlayPosition::Center), (Center, Center));
+        assert_eq!(overlay_anchors(OverlayPosition::CenterRight), (End, Center));
+        assert_eq!(
+            overlay_anchors(OverlayPosition::BottomCenter),
+            (Center, End)
+        );
+    }
+
+    #[test]
     fn monitor_hit_test_uses_half_open_physical_bounds() {
         let position = PhysicalPosition::new(-2560, -200);
         let size = PhysicalSize::new(2560, 1440);
@@ -843,7 +960,7 @@ mod tests {
                 1.0,
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
-                OverlayPosition::Bottom,
+                OverlayPosition::BottomRight,
             ),
             (5358, 2004, 384, 96)
         );
@@ -855,7 +972,7 @@ mod tests {
                 1.0,
                 OVERLAY_WIDTH,
                 OVERLAY_HEIGHT,
-                OverlayPosition::Top,
+                OverlayPosition::TopRight,
             ),
             (5358, 6, 384, 96)
         );
@@ -872,7 +989,7 @@ mod tests {
                 1.0,
                 OVERLAY_STREAM_WIDTH,
                 OVERLAY_STREAM_HEIGHT,
-                OverlayPosition::Bottom,
+                OverlayPosition::BottomRight,
             ),
             (-540, 1027, 525, 163)
         );
@@ -891,7 +1008,7 @@ mod tests {
             1.1,
             OVERLAY_STREAM_WIDTH,
             OVERLAY_STREAM_HEIGHT,
-            OverlayPosition::Bottom,
+            OverlayPosition::BottomRight,
         );
         // 420x130 logical at 1.25 DPI x 1.1 text, still anchored to the right.
         assert_eq!((x, y, width, height), (-593, 1011, 578, 179));
@@ -907,7 +1024,7 @@ mod tests {
             1.1,
             OVERLAY_STREAM_WIDTH,
             OVERLAY_STREAM_HEIGHT,
-            OverlayPosition::Top,
+            OverlayPosition::TopRight,
         );
         // Top offset rides the DPI scale alone, so the top edge doesn't move.
         assert_eq!(top_y, -195);

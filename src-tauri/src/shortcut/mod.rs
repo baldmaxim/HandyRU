@@ -714,16 +714,16 @@ pub fn change_selected_language_setting(app: AppHandle, language: String) -> Res
 #[specta::specta]
 pub fn change_overlay_position_setting(app: AppHandle, position: String) -> Result<(), String> {
     let mut settings = settings::get_settings(&app);
-    let parsed = match position.as_str() {
-        // "none" is retired (visibility is overlay_style now); fold legacy callers
-        // onto Bottom rather than warn.
-        "none" | "bottom" => OverlayPosition::Bottom,
-        "top" => OverlayPosition::Top,
-        other => {
-            warn!("Invalid overlay position '{}', defaulting to bottom", other);
-            OverlayPosition::Bottom
-        }
-    };
+    // Serde's aliases also fold the legacy "top"/"bottom"/"none" values.
+    let parsed =
+        serde_json::from_value::<OverlayPosition>(serde_json::Value::String(position.clone()))
+            .unwrap_or_else(|_| {
+                warn!(
+                    "Invalid overlay position '{}', defaulting to bottom_right",
+                    position
+                );
+                OverlayPosition::BottomRight
+            });
     settings.overlay_position = parsed;
     settings::write_settings(&app, settings);
 

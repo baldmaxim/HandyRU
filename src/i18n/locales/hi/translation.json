@@ -293,8 +293,15 @@
           "title": "ओवरले की जगह",
           "description": "रिकॉर्डिंग और ट्रांसक्रिप्शन के दौरान ओवरले स्क्रीन पर कहां दिखे.",
           "options": {
-            "bottom": "नीचे",
-            "top": "ऊपर"
+            "top_left": "Top left",
+            "top_center": "Top center",
+            "top_right": "Top right",
+            "center_left": "Center left",
+            "center": "Center",
+            "center_right": "Center right",
+            "bottom_left": "Bottom left",
+            "bottom_center": "Bottom center",
+            "bottom_right": "Bottom right"
           }
         }
       },

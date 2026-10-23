@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import "./RecordingOverlay.css";
 import { commands, events } from "@/bindings";
 import type {
+  OverlayPosition,
   StreamPhase,
   StreamPhaseEvent,
   StreamTextEvent,
@@ -77,9 +78,10 @@ const RecordingOverlay: React.FC = () => {
   // (replays the entrance, and never animates in from the previous panel's open
   // size).
   const [session, setSession] = useState(0);
-  // Overlay placement (top vs bottom of the screen). The Live panel grows downward
-  // from a top overlay (oldest line under the pill) and upward from a bottom one.
-  const [position, setPosition] = useState<"top" | "bottom">("bottom");
+  // Overlay placement on the screen grid. The Live panel grows downward from a
+  // top overlay (oldest line under the pill) and upward otherwise; the card hugs
+  // the window side matching the screen side it sits on.
+  const [position, setPosition] = useState<OverlayPosition>("bottom_right");
   // True once live text overflows the cap. A top overlay fades its top edge only
   // while overflowing, so the resting first line stays crisp flush under the pill.
   const [overflowing, setOverflowing] = useState(false);
@@ -113,9 +115,7 @@ const RecordingOverlay: React.FC = () => {
         try {
           const settings = await commands.getAppSettings();
           if (settings.status === "ok") {
-            setPosition(
-              settings.data.overlay_position === "top" ? "top" : "bottom",
-            );
+            setPosition(settings.data.overlay_position ?? "bottom_right");
           }
         } catch {
           // Keep the previous/default placement if settings can't be read.
@@ -266,6 +266,9 @@ const RecordingOverlay: React.FC = () => {
     pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= 16;
   };
 
+  // "top_left" → top + left; the bare "center" is centred on both axes.
+  const [vertical, horizontal = "center"] = position.split("_");
+
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -322,7 +325,7 @@ const RecordingOverlay: React.FC = () => {
     glow: boolean,
     children: React.ReactNode,
   ) => (
-    <div className={`ov-stage ${position}`}>
+    <div className={`ov-stage ${vertical} h-${horizontal}`}>
       <div
         key={session}
         dir={direction}
