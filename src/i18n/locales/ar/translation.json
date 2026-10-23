@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "الإعدادات...",
-    "checkUpdates": "التحقق من وجود تحديثات...",
     "copyLastTranscript": "نسخ آخر نص تم تفريغه",
     "unloadModel": "تفريغ النموذج",
     "model": "النموذج",
@@ -627,24 +626,6 @@
         "title": "مجلد بيانات التطبيق",
         "description": "الموقع الذي يخزن فيه Handy بياناته"
       },
-      "sourceCode": {
-        "title": "كود المصدر",
-        "description": "عرض كود المصدر والمساهمة",
-        "button": "عرض على GitHub"
-      },
-      "supportDevelopment": {
-        "title": "دعم التطوير",
-        "description": "ساعدنا في مواصلة بناء Handy",
-        "button": "تبرع"
-      },
-      "acknowledgments": {
-        "title": "شكر وتقدير",
-        "ggml": {
-          "title": "ggml",
-          "description": "استنتاج عالي الأداء لنموذج التعرف التلقائي على الكلام Whisper من OpenAI",
-          "details": ".يستخدم Handy برنامج ggml لمعالجة سريعة ومحلية لتحويل الكلام إلى نص. شكراً للعمل الرائع الذي قام به Georgi Gerganov والمساهمون"
-        }
-      },
       "whatsNewUpdates": {
         "label": "إظهار الجديد",
         "description": "إظهار ملاحظات الإصدار بعد تحديثات Handy"
@@ -689,7 +670,6 @@
     "downloading": "جاري التنزيل {{progress}}%...",
     "installing": "جاري التثبيت...",
     "preparing": "جاري التحضير...",
-    "checkForUpdates": "التحقق من وجود تحديثات",
     "portableUpdateTitle": "التحديث اليدوي مطلوب",
     "portableUpdateMessage": "لا يمكن تحديث التثبيتات المحمولة تلقائيًا. نزّل المثبّت المناسب لنظامك من الزر أدناه، شغّله، وثبّته في المجلد نفسه — يبقى مجلد Data/ (الإعدادات والنماذج والتسجيلات) في مكانه.",
     "portableUpdateButton": "تنزيل المثبّت",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "فتح GitHub Releases",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "common": {
     "loading": "جاري التحميل...",

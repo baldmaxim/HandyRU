@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Настройки...",
-    "checkUpdates": "Проверить обновления...",
     "copyLastTranscript": "Скопировать последнюю транскрипцию",
     "unloadModel": "Выгрузить модель",
     "model": "Модель",
@@ -650,30 +649,12 @@
       "title": "О программе",
       "version": {
         "title": "Версия",
-        "description": "Текущая версия Handy",
+        "description": "Текущая версия HandyRU",
         "checkNow": "Проверить обновления"
       },
       "appDataDirectory": {
         "title": "Каталог данных приложения",
         "description": "Место, где Handy хранит свои данные"
-      },
-      "sourceCode": {
-        "title": "Исходный код",
-        "description": "Просмотреть исходный код и внести свой вклад",
-        "button": "Посмотреть на GitHub"
-      },
-      "supportDevelopment": {
-        "title": "Поддержка развития",
-        "description": "Помогите нам продолжать развитие Handy",
-        "button": "Поддержать"
-      },
-      "acknowledgments": {
-        "title": "Благодарности",
-        "ggml": {
-          "title": "ggml",
-          "description": "Высокопроизводительная модель автоматического распознавания речи OpenAI Whisper",
-          "details": "Handy использует ggml для быстрого локального преобразования речи в текст. Спасибо великолепной работе Георгия Герганова и участников."
-        }
       },
       "whatsNewUpdates": {
         "label": "Показывать новинки",
@@ -689,7 +670,6 @@
     "downloading": "Загрузка... {{progress}} %",
     "installing": "Установка...",
     "preparing": "Подготовка...",
-    "checkForUpdates": "Проверить наличие обновлений",
     "portableUpdateTitle": "Требуется ручное обновление",
     "portableUpdateMessage": "Портативные установки нельзя обновить автоматически. Скачайте ниже установщик для вашей системы, запустите его и установите в ту же папку — папка Data/ (настройки, модели, записи) останется на месте.",
     "portableUpdateButton": "Скачать установщик",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "Открыть GitHub Releases",
     "restartToUpdate": "Перезапустить и обновить до v{{version}}",
     "updateReadyTitle": "Обновление HandyRU {{version}} загружено",
-    "updateReadyBody": "Перезапустите, чтобы установить: кнопка внизу окна настроек или «Проверить обновления» в трее.",
+    "updateReadyBody": "Откройте HandyRU и нажмите «Перезапустить и установить» во всплывающей подсказке или позже в разделе «О программе».",
     "updateAvailableTitle": "Доступна HandyRU {{version}}",
-    "updatePortableBody": "Скачайте установщик на странице GitHub Releases."
+    "updatePortableBody": "Скачайте установщик на странице GitHub Releases.",
+    "updateReadyToast": "Установится при перезапуске HandyRU.",
+    "installNow": "Перезапустить и установить",
+    "later": "Позже"
   },
   "common": {
     "loading": "Загрузка...",

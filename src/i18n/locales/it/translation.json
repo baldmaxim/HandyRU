@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Impostazioni...",
-    "checkUpdates": "Verifica aggiornamenti...",
     "copyLastTranscript": "Copia l'ultima trascrizione",
     "unloadModel": "Rilascia modello",
     "model": "Modello",
@@ -657,24 +656,6 @@
         "title": "Cartella Dati App",
         "description": "Cartella in cui Handy salva i dati"
       },
-      "sourceCode": {
-        "title": "Codice Sorgente",
-        "description": "Vedi e contribuisci al codice sorgente",
-        "button": "Vedi su GitHub"
-      },
-      "supportDevelopment": {
-        "title": "Supporta lo Sviluppo",
-        "description": "Aiutaci a sviluppare Handy",
-        "button": "Dona"
-      },
-      "acknowledgments": {
-        "title": "Ringraziamenti",
-        "ggml": {
-          "title": "ggml",
-          "description": "Inferenza ad alte prestazioni del modello di riconoscimento vocale automatico Whisper di OpenAI",
-          "details": "Handy usa ggml per il riconoscimento vocale veloce in locale. Grazie a Georgi Gerganov e collaboratori per il fantastico lavoro."
-        }
-      },
       "whatsNewUpdates": {
         "label": "Mostra novità",
         "description": "Mostra le note di rilascio dopo gli aggiornamenti di Handy"
@@ -689,7 +670,6 @@
     "downloading": "Download... {{progress}}%",
     "installing": "Installazione...",
     "preparing": "Preparazione...",
-    "checkForUpdates": "Controlla aggiornamenti",
     "portableUpdateTitle": "Aggiornamento manuale necessario",
     "portableUpdateMessage": "Le installazioni portatili non possono essere aggiornate automaticamente. Scarica qui sotto il programma di installazione per il tuo sistema, eseguilo e installalo nella stessa cartella: la cartella Data/ (impostazioni, modelli, registrazioni) viene mantenuta.",
     "portableUpdateButton": "Scarica il programma di installazione",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "Apri i rilasci su GitHub",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "common": {
     "loading": "Caricamento...",

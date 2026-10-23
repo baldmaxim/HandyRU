@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "設定...",
-    "checkUpdates": "檢查更新...",
     "copyLastTranscript": "複製最新轉錄",
     "unloadModel": "卸載模型",
     "model": "模型",
@@ -657,24 +656,6 @@
         "title": "應用程式資料目錄",
         "description": "Handy 儲存資料的位置"
       },
-      "sourceCode": {
-        "title": "原始碼",
-        "description": "檢視原始碼並參與貢獻",
-        "button": "在 GitHub 上檢視"
-      },
-      "supportDevelopment": {
-        "title": "支持開發",
-        "description": "幫助我們繼續開發 Handy",
-        "button": "捐贈"
-      },
-      "acknowledgments": {
-        "title": "致謝",
-        "ggml": {
-          "title": "ggml",
-          "description": "針對 OpenAI Whisper 自動語音辨識模型的高效能推理引擎",
-          "details": "Handy 使用 ggml 進行快速的本機語音轉文字處理。感謝 Georgi Gerganov 和貢獻者們的傑出工作"
-        }
-      },
       "whatsNewUpdates": {
         "label": "顯示新功能",
         "description": "Handy 更新後顯示版本資訊"
@@ -689,7 +670,6 @@
     "downloading": "下載中... {{progress}}%",
     "installing": "安裝中...",
     "preparing": "準備中...",
-    "checkForUpdates": "檢查更新",
     "portableUpdateTitle": "需要手動更新",
     "portableUpdateMessage": "可攜式安裝無法自動更新。請透過下方按鈕下載適用於你的系統的安裝程式，執行後安裝到相同資料夾，你的 Data/ 資料夾（設定、模型、錄音）會保留在原處。",
     "portableUpdateButton": "下載安裝程式",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "開啟 GitHub Releases",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "common": {
     "loading": "載入中...",

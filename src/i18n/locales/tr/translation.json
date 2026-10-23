@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Ayarlar...",
-    "checkUpdates": "Güncellemeleri Kontrol Et...",
     "copyLastTranscript": "Son Transkripti Kopyala",
     "unloadModel": "Modeli Boşalt",
     "model": "Model",
@@ -657,24 +656,6 @@
         "title": "Uygulama Veri Dizini",
         "description": "Handy'nin verilerini sakladığı konum"
       },
-      "sourceCode": {
-        "title": "Kaynak Kodu",
-        "description": "Kaynak kodunu görüntüle ve katkıda bulun",
-        "button": "GitHub'da Görüntüle"
-      },
-      "supportDevelopment": {
-        "title": "Geliştirmeyi Destekle",
-        "description": "Handy'yi geliştirmeye devam etmemize yardımcı olun",
-        "button": "Bağış Yap"
-      },
-      "acknowledgments": {
-        "title": "Teşekkürler",
-        "ggml": {
-          "title": "ggml",
-          "description": "Cihaz üzerinde makine öğrenmesi çıkarımı için yüksek performanslı tensör kütüphanesi",
-          "details": "Handy'nin yerel konuşmadan metne dönüştürme özelliği transcribe.cpp ve ggml üzerine kuruludur. Georgi Gerganov'a ve katkıda bulunanlara harika çalışmaları için teşekkür ederiz."
-        }
-      },
       "whatsNewUpdates": {
         "label": "Yenilikleri Göster",
         "description": "Handy güncellemelerinden sonra sürüm notlarını göster"
@@ -689,7 +670,6 @@
     "downloading": "İndiriliyor... %{{progress}}",
     "installing": "Yükleniyor...",
     "preparing": "Hazırlanıyor...",
-    "checkForUpdates": "Güncellemeleri kontrol et",
     "portableUpdateTitle": "Manuel güncelleme gerekli",
     "portableUpdateMessage": "Taşınabilir kurulumlar otomatik olarak güncellenemez. Aşağıdan sisteminize uygun yükleyiciyi indirin, çalıştırın ve aynı klasöre kurun — Data/ klasörünüz (ayarlar, modeller, kayıtlar) yerinde kalır.",
     "portableUpdateButton": "Yükleyiciyi indir",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "GitHub Releases’i aç",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "common": {
     "loading": "Yükleniyor...",

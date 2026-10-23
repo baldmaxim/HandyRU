@@ -11,7 +11,7 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
-import { ProgressBar } from "../shared";
+import { toast } from "sonner";
 import { useSettings } from "../../hooks/useSettings";
 import { commands } from "../../bindings";
 import { useUpdateStore, type UpdateStage } from "../../stores/updateStore";
@@ -19,10 +19,6 @@ import {
   resolvePortableInstallerUrl,
   PORTABLE_RELEASES_URL,
 } from "./portableInstaller";
-
-interface UpdateCheckerProps {
-  className?: string;
-}
 
 // The app lives in the tray for days, so re-check periodically, not only at
 // launch, and again whenever the settings window is brought up after a while.
@@ -39,15 +35,14 @@ const notify = async (title: string, body: string) => {
   }
 };
 
-const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
+/**
+ * Background updater: checks on a schedule, downloads silently, then offers the
+ * install in a toast (and a system notification while the window is hidden). It
+ * renders nothing but the portable-install dialog; the status and the manual
+ * check live in the shared update store (see the About page).
+ */
+const UpdateChecker: React.FC = () => {
   const { t } = useTranslation();
-  const {
-    stage,
-    version: updateVersion,
-    progress: downloadProgress,
-    isChecking,
-    showUpToDate,
-  } = useUpdateStore();
   const setIsChecking = (isChecking: boolean) =>
     useUpdateStore.setState({ isChecking });
   const setShowUpToDate = (showUpToDate: boolean) =>
@@ -178,6 +173,18 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
           t("footer.updateReadyTitle", { version: update.version }),
           t("footer.updateReadyBody"),
         );
+        // Stays up until acted on, so it's still there when the user opens the
+        // window from the tray after the system notification.
+        toast(t("footer.updateReadyTitle", { version: update.version }), {
+          id: "update-ready",
+          description: t("footer.updateReadyToast"),
+          duration: Infinity,
+          action: {
+            label: t("footer.installNow"),
+            onClick: () => installUpdate(),
+          },
+          cancel: { label: t("footer.later"), onClick: () => {} },
+        });
       }
     } catch (error) {
       // Retried on the next periodic or manual check.
@@ -220,6 +227,16 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
             t("footer.updateAvailableTitle", { version: update.version }),
             t("footer.updatePortableBody"),
           );
+          toast(t("footer.updateAvailableTitle", { version: update.version }), {
+            id: "update-ready",
+            description: t("footer.updatePortableBody"),
+            duration: Infinity,
+            action: {
+              label: t("footer.portableUpdateButton"),
+              onClick: () => setShowPortableUpdateDialog(true),
+            },
+            cancel: { label: t("footer.later"), onClick: () => {} },
+          });
         }
         return;
       }
@@ -250,43 +267,6 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
       moveTo("idle");
     }
   };
-
-  // Update status functions
-  const getUpdateStatusText = () => {
-    if (!updateChecksEnabled) {
-      return t("footer.updateCheckingDisabled");
-    }
-    switch (stage) {
-      case "downloading":
-        return downloadProgress > 0
-          ? t("footer.downloading", {
-              progress: downloadProgress.toString().padStart(3),
-            })
-          : t("footer.preparing");
-      case "ready":
-        return t("footer.restartToUpdate", { version: updateVersion });
-      case "installing":
-        return t("footer.installing");
-      case "available":
-        return t("footer.updateAvailableShort");
-    }
-    if (isChecking) return t("footer.checkingUpdates");
-    if (showUpToDate) return t("footer.upToDate");
-    return t("footer.checkForUpdates");
-  };
-
-  const getUpdateStatusAction = () => {
-    if (!updateChecksEnabled) return undefined;
-    if (stage === "ready") return installUpdate;
-    if (stage === "available") return () => setShowPortableUpdateDialog(true);
-    if (stage === "idle" && !isChecking) return () => checkForUpdates(true);
-    return undefined;
-  };
-
-  const highlighted = stage === "ready" || stage === "available";
-  const isUpdateClickable =
-    updateChecksEnabled &&
-    (highlighted || (stage === "idle" && !isChecking && !showUpToDate));
 
   // When no installer could be resolved for this target the button falls back to
   // the releases index, so the dialog has to say "browse" rather than "download".
@@ -327,38 +307,6 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
           </div>
         </div>
       )}
-      <div className={`flex items-center gap-3 ${className}`}>
-        {isUpdateClickable ? (
-          <button
-            onClick={getUpdateStatusAction()}
-            className={`transition-colors tabular-nums ${
-              highlighted
-                ? "text-logo-primary hover:text-logo-primary/80 font-medium"
-                : "text-text/60 hover:text-text/80"
-            }`}
-          >
-            {getUpdateStatusText()}
-          </button>
-        ) : (
-          <span className="text-text/60 tabular-nums">
-            {getUpdateStatusText()}
-          </span>
-        )}
-
-        {stage === "downloading" &&
-          downloadProgress > 0 &&
-          downloadProgress < 100 && (
-            <ProgressBar
-              progress={[
-                {
-                  id: "update",
-                  percentage: downloadProgress,
-                },
-              ]}
-              size="large"
-            />
-          )}
-      </div>
     </>
   );
 };

@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Indstillinger...",
-    "checkUpdates": "Tjek for opdateringer...",
     "copyLastTranscript": "Kopiér seneste transskription",
     "unloadModel": "Frigør model",
     "model": "Model",
@@ -660,24 +659,6 @@
       "appDataDirectory": {
         "title": "Appdatamappe",
         "description": "Placering, hvor Handy gemmer sine data"
-      },
-      "sourceCode": {
-        "title": "Kildekode",
-        "description": "Se kildekode og bidrag",
-        "button": "Vis på GitHub"
-      },
-      "supportDevelopment": {
-        "title": "Støt udviklingen",
-        "description": "Hjælp os med at fortsætte udviklingen af Handy",
-        "button": "Donér"
-      },
-      "acknowledgments": {
-        "title": "Anerkendelser",
-        "ggml": {
-          "title": "ggml",
-          "description": "Højtydende tensor-bibliotek til maskinlæringsinferens på enheden",
-          "details": "Handys lokale tale-til-tekst funktionalitet er bygget på transcribe.cpp og ggml. Tak for det fantastiske arbejde af Georgi Gerganov og bidragyderne."
-        }
       }
     }
   },
@@ -689,7 +670,6 @@
     "downloading": "Downloader... {{progress}}%",
     "installing": "Installerer...",
     "preparing": "Forbereder...",
-    "checkForUpdates": "Tjek for opdateringer",
     "portableUpdateTitle": "Manuel opdatering påkrævet",
     "portableUpdateMessage": "Flytbare installationer kan ikke opdateres automatisk. Download installeren til dit system nedenfor, kør den, og installer i den samme mappe — din Data/-mappe (indstillinger, modeller, optagelser) bliver bevaret.",
     "portableUpdateButton": "Download installer",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "Åbn GitHub Releases",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "whatsNew": {
     "title": "Nyt i Handy v{{version}}"

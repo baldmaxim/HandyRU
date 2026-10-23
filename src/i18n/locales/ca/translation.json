@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Configuració...",
-    "checkUpdates": "Comprova si hi ha actualitzacions...",
     "copyLastTranscript": "Copia l'última transcripció",
     "unloadModel": "Allibera el model de la memòria",
     "model": "Model",
@@ -660,24 +659,6 @@
       "appDataDirectory": {
         "title": "Directori de dades de l'aplicació",
         "description": "Ubicació on el Handy desa les dades"
-      },
-      "sourceCode": {
-        "title": "Codi font",
-        "description": "Consulta el codi font i col·laboreu-hi",
-        "button": "Mostra al GitHub"
-      },
-      "supportDevelopment": {
-        "title": "Dona suport al desenvolupament",
-        "description": "Ajudeu-nos a continuar desenvolupant el Handy",
-        "button": "Feu una donació"
-      },
-      "acknowledgments": {
-        "title": "Agraïments",
-        "ggml": {
-          "title": "ggml",
-          "description": "Biblioteca de tensors d'alt rendiment per a la inferència d'aprenentatge automàtic al dispositiu",
-          "details": "La transcripció local de veu a text del Handy es basa en el transcribe.cpp i el ggml. Gràcies a la gran feina de Georgi Gerganov i dels col·laboradors."
-        }
       }
     }
   },
@@ -689,7 +670,6 @@
     "downloading": "S'està baixant... {{progress}}%",
     "installing": "S'està instal·lant...",
     "preparing": "S'està preparant...",
-    "checkForUpdates": "Comprova si hi ha actualitzacions",
     "portableUpdateTitle": "Cal actualitzar manualment",
     "portableUpdateMessage": "Les instal·lacions portables no es poden actualitzar automàticament. Baixa l'instal·lador per al vostre sistema a continuació, executeu-lo i instal·leu-lo a la mateixa carpeta. La carpeta Data/ (configuració, models i enregistraments) es conserva.",
     "portableUpdateButton": "Baixa l'instal·lador",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "Obriu GitHub Releases",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "whatsNew": {
     "title": "Novetats del Handy v{{version}}"

@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "सेटिंग...",
-    "checkUpdates": "अपडेट जांचें...",
     "copyLastTranscript": "पिछला ट्रांसक्रिप्ट कॉपी करें",
     "unloadModel": "मॉडल अनलोड करें",
     "model": "मॉडल",
@@ -660,24 +659,6 @@
       "appDataDirectory": {
         "title": "ऐप डेटा फ़ोल्डर",
         "description": "वह जगह जहां Handy अपना डेटा सेव करता है"
-      },
-      "sourceCode": {
-        "title": "सोर्स कोड",
-        "description": "सोर्स कोड देखें और योगदान दें",
-        "button": "GitHub पर देखें"
-      },
-      "supportDevelopment": {
-        "title": "डेवलपमेंट में सहयोग करें",
-        "description": "Handy को आगे बढ़ाने में हमारी मदद करें",
-        "button": "दान करें"
-      },
-      "acknowledgments": {
-        "title": "आभार",
-        "ggml": {
-          "title": "ggml",
-          "description": "डिवाइस पर ही मशीन लर्निंग इन्फ़रेंस के लिए हाई-परफ़ॉर्मेंस टेंसर लाइब्रेरी",
-          "details": "Handy का लोकल स्पीच-टू-टेक्स्ट transcribe.cpp और ggml पर आधारित है. Georgi Gerganov और योगदान देने वालों के शानदार काम के लिए धन्यवाद."
-        }
       }
     }
   },
@@ -689,7 +670,6 @@
     "downloading": "डाउनलोड हो रहा है... {{progress}}%",
     "installing": "इंस्टॉल हो रहा है...",
     "preparing": "तैयारी हो रही है...",
-    "checkForUpdates": "अपडेट जांचें",
     "portableUpdateTitle": "मैन्युअल अपडेट ज़रूरी है",
     "portableUpdateMessage": "पोर्टेबल इंस्टॉल अपने आप अपडेट नहीं हो सकते. नीचे से अपने सिस्टम के लिए इंस्टॉलर डाउनलोड करें, उसे चलाएँ और उसी फ़ोल्डर में इंस्टॉल करें — आपका Data/ फ़ोल्डर (सेटिंग, मॉडल, रिकॉर्डिंग) जहाँ है वहीं बना रहता है.",
     "portableUpdateButton": "इंस्टॉलर डाउनलोड करें",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "GitHub Releases खोलें",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "whatsNew": {
     "title": "Handy v{{version}} में नया क्या है"

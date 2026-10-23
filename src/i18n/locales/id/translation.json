@@ -1,7 +1,6 @@
 {
   "tray": {
     "settings": "Pengaturan...",
-    "checkUpdates": "Periksa Pembaruan...",
     "copyLastTranscript": "Salin Transkripsi Terakhir",
     "unloadModel": "Keluarkan Model dari Memori",
     "model": "Model",
@@ -660,24 +659,6 @@
       "appDataDirectory": {
         "title": "Direktori Data Aplikasi",
         "description": "Lokasi Handy menyimpan datanya"
-      },
-      "sourceCode": {
-        "title": "Kode Sumber",
-        "description": "Lihat kode sumber dan berkontribusi",
-        "button": "Lihat di GitHub"
-      },
-      "supportDevelopment": {
-        "title": "Dukung Pengembangan",
-        "description": "Bantu kami terus mengembangkan Handy",
-        "button": "Donasi"
-      },
-      "acknowledgments": {
-        "title": "Ucapan Terima Kasih",
-        "ggml": {
-          "title": "ggml",
-          "description": "Pustaka tensor berkinerja tinggi untuk inferensi pembelajaran mesin di perangkat",
-          "details": "Fitur ucapan-ke-teks lokal Handy dibangun menggunakan transcribe.cpp dan ggml. Terima kasih kepada Georgi Gerganov dan para kontributor atas karya luar biasa mereka."
-        }
       }
     }
   },
@@ -689,7 +670,6 @@
     "downloading": "Mengunduh... {{progress}}%",
     "installing": "Menginstal...",
     "preparing": "Menyiapkan...",
-    "checkForUpdates": "Periksa pembaruan",
     "portableUpdateTitle": "Pembaruan manual diperlukan",
     "portableUpdateMessage": "Instalasi portabel tidak dapat diperbarui secara otomatis. Unduh penginstal untuk sistem Anda di bawah ini, jalankan, lalu instal ke folder yang sama — folder Data/ Anda (pengaturan, model, rekaman) tetap dipertahankan.",
     "portableUpdateButton": "Unduh penginstal",
@@ -697,9 +677,12 @@
     "portableUpdateBrowseButton": "Buka GitHub Releases",
     "restartToUpdate": "Restart to update to v{{version}}",
     "updateReadyTitle": "HandyRU {{version}} is ready to install",
-    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateReadyBody": "Open HandyRU and click “Restart and install” in the pop-up — or later from About.",
     "updateAvailableTitle": "HandyRU {{version}} is available",
-    "updatePortableBody": "Download the installer from GitHub Releases."
+    "updatePortableBody": "Download the installer from GitHub Releases.",
+    "updateReadyToast": "It installs when HandyRU restarts.",
+    "installNow": "Restart and install",
+    "later": "Later"
   },
   "whatsNew": {
     "title": "Baru di Handy v{{version}}"

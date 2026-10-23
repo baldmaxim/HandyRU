@@ -28,13 +28,10 @@ const Footer: React.FC = () => {
           <ModelSelector />
         </div>
 
-        {/* Update Status */}
-        <div className="flex items-center gap-1">
-          <UpdateChecker />
-          <span>•</span>
-          {/* eslint-disable-next-line i18next/no-literal-string */}
-          <span>v{version}</span>
-        </div>
+        {/* The updater works in the background; it only surfaces as toasts. */}
+        <UpdateChecker />
+        {/* eslint-disable-next-line i18next/no-literal-string */}
+        <span>v{version}</span>
       </div>
     </div>
   );
