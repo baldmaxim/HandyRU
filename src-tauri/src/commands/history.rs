@@ -1,6 +1,6 @@
 use crate::actions::process_transcription_output;
 use crate::managers::{
-    history::{HistoryManager, PaginatedHistory},
+    history::{HistoryEntry, HistoryManager, PaginatedHistory, TrainingStats},
     transcription::TranscriptionManager,
 };
 use std::sync::Arc;
@@ -104,6 +104,28 @@ pub async fn retry_history_entry_transcription(
         )
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn set_history_entry_correction(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+    id: i64,
+    text: Option<String>,
+) -> Result<HistoryEntry, String> {
+    history_manager
+        .set_corrected_text(id, text)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_training_stats(
+    _app: AppHandle,
+    history_manager: State<'_, Arc<HistoryManager>>,
+) -> Result<TrainingStats, String> {
+    history_manager.training_stats().map_err(|e| e.to_string())
 }
 
 #[tauri::command]

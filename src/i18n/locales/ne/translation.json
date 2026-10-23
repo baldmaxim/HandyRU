@@ -494,7 +494,23 @@
       "retranscribe": "फेरि ट्रान्सक्राइब गर्नुहोस्",
       "retranscribeError": "फेरि ट्रान्सक्राइब गर्न सकिएन। कृपया फेरि प्रयास गर्नुहोस्।",
       "transcribing": "ट्रान्सक्राइब गरिँदैछ...",
-      "transcriptionFailed": "ट्रान्सक्रिप्सन गर्न सकिएन। रिट्राई आइकन प्रयोग गरेर फेरि ट्रान्सक्राइब गर्न सक्नुहुन्छ।"
+      "transcriptionFailed": "ट्रान्सक्रिप्सन गर्न सकिएन। रिट्राई आइकन प्रयोग गरेर फेरि ट्रान्सक्राइब गर्न सक्नुहुन्छ।",
+      "training": {
+        "title": "Voice model",
+        "label": "Collect recordings for training",
+        "description": "Keep every dictation (audio and text) to train a model on your voice. While this is on, recordings are never deleted automatically.",
+        "stats": "Collected {{total}} · recordings: {{entries}} · corrected: {{corrected}} ({{correctedTotal}})",
+        "hoursMinutes": "{{hours}} h {{minutes}} min",
+        "minutes": "{{minutes}} min"
+      },
+      "correction": {
+        "edit": "Correct the text",
+        "badge": "Corrected",
+        "hint": "Listen to the recording and fix the text: corrections teach the model your words. Ctrl+Enter saves, Esc cancels.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "error": "Failed to save the correction."
+      }
     },
     "debug": {
       "title": "डिबग",

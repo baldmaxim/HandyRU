@@ -31,6 +31,9 @@ static MIGRATIONS: &[M] = &[
     M::up("ALTER TABLE transcription_history ADD COLUMN post_processed_text TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN post_process_prompt TEXT;"),
     M::up("ALTER TABLE transcription_history ADD COLUMN post_process_requested BOOLEAN NOT NULL DEFAULT 0;"),
+    // The user's hand-corrected text: the reference label for training a personal
+    // voice model. NULL until corrected.
+    M::up("ALTER TABLE transcription_history ADD COLUMN corrected_text TEXT;"),
 ];
 
 #[derive(Clone, Debug, Serialize, Deserialize, Type)]
@@ -63,6 +66,17 @@ pub struct HistoryEntry {
     pub post_processed_text: Option<String>,
     pub post_process_prompt: Option<String>,
     pub post_process_requested: bool,
+    pub corrected_text: Option<String>,
+}
+
+/// How much training material the history holds: every kept dictation, and the
+/// hand-corrected ones that can serve as reference labels.
+#[derive(Clone, Debug, Serialize, Deserialize, Type)]
+pub struct TrainingStats {
+    pub entries: u32,
+    pub corrected: u32,
+    pub total_seconds: f64,
+    pub corrected_seconds: f64,
 }
 
 pub struct HistoryManager {
@@ -207,6 +221,7 @@ impl HistoryManager {
             post_processed_text: row.get("post_processed_text")?,
             post_process_prompt: row.get("post_process_prompt")?,
             post_process_requested: row.get("post_process_requested")?,
+            corrected_text: row.get("corrected_text")?,
         })
     }
 
@@ -261,6 +276,7 @@ impl HistoryManager {
             post_processed_text,
             post_process_prompt,
             post_process_requested,
+            corrected_text: None,
         };
 
         debug!("Saved history entry with id {}", entry.id);
@@ -308,7 +324,7 @@ impl HistoryManager {
 
         let entry = conn
             .query_row(
-                "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested
+                "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested, corrected_text
                  FROM transcription_history WHERE id = ?1",
                 params![id],
                 Self::map_history_entry,
@@ -328,6 +344,11 @@ impl HistoryManager {
     }
 
     pub fn cleanup_old_entries(&self) -> Result<()> {
+        // Collecting training data keeps every dictation, whatever the retention.
+        if crate::settings::get_settings(&self.app_handle).training_collection_enabled {
+            return Ok(());
+        }
+
         let retention_period = crate::settings::get_recording_retention_period(&self.app_handle);
 
         match retention_period {
@@ -459,7 +480,7 @@ impl HistoryManager {
             (Some(cursor_id), Some(lim)) => {
                 let fetch_count = (lim + 1) as i64;
                 let mut stmt = conn.prepare(
-                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested
+                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested, corrected_text
                      FROM transcription_history
                      WHERE id < ?1
                      ORDER BY id DESC
@@ -473,7 +494,7 @@ impl HistoryManager {
             (None, Some(lim)) => {
                 let fetch_count = (lim + 1) as i64;
                 let mut stmt = conn.prepare(
-                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested
+                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested, corrected_text
                      FROM transcription_history
                      ORDER BY id DESC
                      LIMIT ?1",
@@ -485,7 +506,7 @@ impl HistoryManager {
             }
             (_, None) => {
                 let mut stmt = conn.prepare(
-                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested
+                    "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested, corrected_text
                      FROM transcription_history
                      ORDER BY id DESC",
                 )?;
@@ -516,7 +537,8 @@ impl HistoryManager {
                 transcription_text,
                 post_processed_text,
                 post_process_prompt,
-                post_process_requested
+                post_process_requested,
+                corrected_text
              FROM transcription_history
              ORDER BY timestamp DESC
              LIMIT 1",
@@ -543,7 +565,8 @@ impl HistoryManager {
                 transcription_text,
                 post_processed_text,
                 post_process_prompt,
-                post_process_requested
+                post_process_requested,
+                corrected_text
              FROM transcription_history
              WHERE transcription_text != ''
              ORDER BY timestamp DESC
@@ -581,6 +604,73 @@ impl HistoryManager {
         Ok(())
     }
 
+    /// Store the user's corrected text for an entry. `None`, blank, or text equal to
+    /// the recognized transcript clears the correction.
+    pub fn set_corrected_text(&self, id: i64, text: Option<String>) -> Result<HistoryEntry> {
+        let conn = self.get_connection()?;
+        let entry = conn
+            .query_row(
+                "SELECT id, file_name, timestamp, saved, title, transcription_text, post_processed_text, post_process_prompt, post_process_requested, corrected_text
+                 FROM transcription_history WHERE id = ?1",
+                params![id],
+                Self::map_history_entry,
+            )
+            .optional()?
+            .ok_or_else(|| anyhow!("History entry {} not found", id))?;
+
+        let corrected = text
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty() && *t != entry.transcription_text.trim());
+        conn.execute(
+            "UPDATE transcription_history SET corrected_text = ?1 WHERE id = ?2",
+            params![corrected, id],
+        )?;
+
+        let entry = HistoryEntry {
+            corrected_text: corrected,
+            ..entry
+        };
+        if let Err(e) = (HistoryUpdatePayload::Updated {
+            entry: entry.clone(),
+        })
+        .emit(&self.app_handle)
+        {
+            error!("Failed to emit history-updated event: {}", e);
+        }
+        Ok(entry)
+    }
+
+    /// Totals over the kept recordings. Durations come from the WAV headers, so a
+    /// recording whose file is gone counts as an entry with no audio.
+    pub fn training_stats(&self) -> Result<TrainingStats> {
+        let conn = self.get_connection()?;
+        let mut stmt = conn
+            .prepare("SELECT file_name, corrected_text IS NOT NULL FROM transcription_history")?;
+        let rows = stmt.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, bool>(1)?))
+        })?;
+
+        let mut stats = TrainingStats {
+            entries: 0,
+            corrected: 0,
+            total_seconds: 0.0,
+            corrected_seconds: 0.0,
+        };
+        for row in rows {
+            let (file_name, corrected) = row?;
+            let seconds = hound::WavReader::open(self.recordings_dir.join(&file_name))
+                .map(|reader| reader.duration() as f64 / reader.spec().sample_rate as f64)
+                .unwrap_or(0.0);
+            stats.entries += 1;
+            stats.total_seconds += seconds;
+            if corrected {
+                stats.corrected += 1;
+                stats.corrected_seconds += seconds;
+            }
+        }
+        Ok(stats)
+    }
+
     pub fn get_audio_file_path(&self, file_name: &str) -> PathBuf {
         self.recordings_dir.join(file_name)
     }
@@ -597,7 +687,8 @@ impl HistoryManager {
                 transcription_text,
                 post_processed_text,
                 post_process_prompt,
-                post_process_requested
+                post_process_requested,
+                corrected_text
              FROM transcription_history
              WHERE id = ?1",
         )?;
@@ -666,7 +757,8 @@ mod tests {
                 transcription_text TEXT NOT NULL,
                 post_processed_text TEXT,
                 post_process_prompt TEXT,
-                post_process_requested BOOLEAN NOT NULL DEFAULT 0
+                post_process_requested BOOLEAN NOT NULL DEFAULT 0,
+                corrected_text TEXT
             );",
         )
         .expect("create transcription_history table");

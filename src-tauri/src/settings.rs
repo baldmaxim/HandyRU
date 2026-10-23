@@ -499,6 +499,10 @@ pub struct AppSettings {
     pub experimental_enabled: bool,
     #[serde(default)]
     pub lazy_stream_close: bool,
+    /// Keep every dictation (audio + text) as material for a personal voice
+    /// model; while on, history cleanup deletes nothing.
+    #[serde(default = "default_training_collection_enabled")]
+    pub training_collection_enabled: bool,
     #[serde(default)]
     pub keyboard_implementation: KeyboardImplementation,
     #[serde(default = "default_show_tray_icon")]
@@ -666,6 +670,10 @@ fn default_paste_delay_after_ms() -> u64 {
 
 fn default_auto_submit() -> bool {
     false
+}
+
+fn default_training_collection_enabled() -> bool {
+    true
 }
 
 fn default_history_limit() -> usize {
@@ -1051,6 +1059,7 @@ pub fn get_default_settings() -> AppSettings {
         accent_color: default_accent_color(),
         experimental_enabled: false,
         lazy_stream_close: false,
+        training_collection_enabled: default_training_collection_enabled(),
         keyboard_implementation: KeyboardImplementation::default(),
         show_tray_icon: default_show_tray_icon(),
         paste_delay_ms: default_paste_delay_ms(),

@@ -494,7 +494,23 @@
       "retranscribe": "Opnieuw transcriberen",
       "retranscribeError": "Opnieuw transcriberen mislukt. Probeer het opnieuw.",
       "transcribing": "Transcriberen...",
-      "transcriptionFailed": "Transcriptie mislukt. Je kunt het opnieuw proberen via het herlaad-pictogram."
+      "transcriptionFailed": "Transcriptie mislukt. Je kunt het opnieuw proberen via het herlaad-pictogram.",
+      "training": {
+        "title": "Voice model",
+        "label": "Collect recordings for training",
+        "description": "Keep every dictation (audio and text) to train a model on your voice. While this is on, recordings are never deleted automatically.",
+        "stats": "Collected {{total}} · recordings: {{entries}} · corrected: {{corrected}} ({{correctedTotal}})",
+        "hoursMinutes": "{{hours}} h {{minutes}} min",
+        "minutes": "{{minutes}} min"
+      },
+      "correction": {
+        "edit": "Correct the text",
+        "badge": "Corrected",
+        "hint": "Listen to the recording and fix the text: corrections teach the model your words. Ctrl+Enter saves, Esc cancels.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "error": "Failed to save the correction."
+      }
     },
     "debug": {
       "title": "Probleemoplossing",
