@@ -44,16 +44,16 @@ tauri_panel! {
 // scale (see windows_text_scale_factor), which WebView2 applies as a zoom.
 //
 // Compact overlay (Minimal / transcribing / processing): a 40px circle that grows
-// into the pill (up to 216 wide, --ov-work-w) from center, with the working glow
-// around it. Height = 40 + 8 (--ov-edge-pad) on the anchored edge + 8 for the
-// glow on the far edge.
+// leftward into the pill (up to 216 wide, --ov-work-w), with the entrance ping
+// and glows around it. Height = 40 + 12 (--ov-edge-pad) on each side.
 const OVERLAY_WIDTH: f64 = 256.0;
-const OVERLAY_HEIGHT: f64 = 56.0;
+const OVERLAY_HEIGHT: f64 = 64.0;
 
-// Live panel is 392x112 (36 control row + 76 text region) plus the 8px edge pad.
-// The height leaves the text region its full 64px cap.
-const OVERLAY_STREAM_WIDTH: f64 = 400.0;
-const OVERLAY_STREAM_HEIGHT: f64 = 126.0;
+// Live panel is 392x112 (36 control row + 76 text region) plus the 12px edge pad
+// on the right and anchored sides. The height leaves the text region its full
+// 64px cap.
+const OVERLAY_STREAM_WIDTH: f64 = 420.0;
+const OVERLAY_STREAM_HEIGHT: f64 = 130.0;
 
 /// Overlay window size (logical) for a given UI state.
 fn overlay_dimensions(state: &str) -> (f64, f64) {
@@ -78,6 +78,10 @@ const OVERLAY_BOTTOM_OFFSET: f64 = 15.0;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 const OVERLAY_BOTTOM_OFFSET: f64 = 40.0;
 
+// The overlay sits in the screen's right corner (OpenWhispr-style); the card is
+// another --ov-edge-pad inside the window.
+const OVERLAY_RIGHT_OFFSET: f64 = 12.0;
+
 /// Configures the edge and offset of a GTK layer surface. gtk-layer-shell
 /// commits anchor and margin changes itself, including while the surface is
 /// mapped, so changing position does not require a manual hide/show cycle.
@@ -92,6 +96,11 @@ fn configure_layer_shell_position(gtk_window: &gtk::ApplicationWindow, position:
     gtk_window.set_anchor(opposite_edge, false);
     gtk_window.set_layer_shell_margin(edge, margin.round() as i32);
     gtk_window.set_layer_shell_margin(opposite_edge, 0);
+
+    gtk_window.set_anchor(Edge::Right, true);
+    gtk_window.set_anchor(Edge::Left, false);
+    gtk_window.set_layer_shell_margin(Edge::Right, OVERLAY_RIGHT_OFFSET.round() as i32);
+    gtk_window.set_layer_shell_margin(Edge::Left, 0);
 }
 
 /// Configures a GTK layer surface before it is shown.
@@ -252,13 +261,21 @@ fn calculate_overlay_position(
 ) -> Option<(f64, f64)> {
     let monitor = get_monitor_with_cursor(app_handle)?;
     let scale = monitor.scale_factor();
-    let monitor_x = monitor.position().x as f64 / scale;
     let monitor_y = monitor.position().y as f64 / scale;
-    let monitor_width = monitor.size().width as f64 / scale;
 
     let settings = settings::get_settings(app_handle);
 
-    let x = monitor_x + (monitor_width - width) / 2.0;
+    // work_area.position shares monitor.position's global coordinate space. On
+    // macOS the work area keeps the overlay clear of a Dock placed on the right.
+    #[cfg(target_os = "macos")]
+    let right = {
+        let wa = monitor.work_area();
+        (wa.position.x as f64 + wa.size.width as f64) / scale
+    };
+    #[cfg(not(target_os = "macos"))]
+    let right = (monitor.position().x as f64 + monitor.size().width as f64) / scale;
+
+    let x = right - width - OVERLAY_RIGHT_OFFSET;
     let y = match settings.overlay_position {
         OverlayPosition::Top => monitor_y + OVERLAY_TOP_OFFSET,
         OverlayPosition::Bottom => {
@@ -320,8 +337,10 @@ fn windows_overlay_bounds(
     let content_scale = scale * text_scale;
     let width = (logical_width * content_scale).round().max(1.0) as i32;
     let height = (logical_height * content_scale).round().max(1.0) as i32;
-    let x = (monitor_position.x as f64 + (monitor_size.width as f64 - width as f64) / 2.0).round()
-        as i32;
+    let x = (monitor_position.x as f64 + monitor_size.width as f64
+        - width as f64
+        - OVERLAY_RIGHT_OFFSET * scale)
+        .round() as i32;
     let y = match overlay_position {
         OverlayPosition::Top => {
             (monitor_position.y as f64 + OVERLAY_TOP_OFFSET * scale).round() as i32
@@ -826,7 +845,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (3648, 2016, 384, 84)
+            (5358, 2004, 384, 96)
         );
         assert_eq!(
             windows_overlay_bounds(
@@ -838,7 +857,7 @@ mod tests {
                 OVERLAY_HEIGHT,
                 OverlayPosition::Top,
             ),
-            (3648, 6, 384, 84)
+            (5358, 6, 384, 96)
         );
     }
 
@@ -855,7 +874,7 @@ mod tests {
                 OVERLAY_STREAM_HEIGHT,
                 OverlayPosition::Bottom,
             ),
-            (-1530, 1032, 500, 158)
+            (-540, 1027, 525, 163)
         );
     }
 
@@ -874,9 +893,11 @@ mod tests {
             OVERLAY_STREAM_HEIGHT,
             OverlayPosition::Bottom,
         );
-        // 400x126 logical at 1.25 DPI x 1.1 text, still centered horizontally.
-        assert_eq!((x, y, width, height), (-1555, 1017, 550, 173));
-        // Bottom edge unchanged from the 1.0 case above (1032 + 158).
+        // 420x130 logical at 1.25 DPI x 1.1 text, still anchored to the right.
+        assert_eq!((x, y, width, height), (-593, 1011, 578, 179));
+        // Right edge unchanged from the 1.0 case above (-540 + 525).
+        assert_eq!(x + width, -15);
+        // Bottom edge unchanged from the 1.0 case above (1027 + 163).
         assert_eq!(y + height, 1190);
 
         let (_, top_y, _, _) = windows_overlay_bounds(

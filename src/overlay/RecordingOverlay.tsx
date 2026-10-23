@@ -322,8 +322,12 @@ const RecordingOverlay: React.FC = () => {
     glow: boolean,
     children: React.ReactNode,
   ) => (
-    <div dir={direction} className={`ov-stage ${position}`}>
-      <div key={session} className={`sshell ${leaving ? "leaving" : ""}`}>
+    <div className={`ov-stage ${position}`}>
+      <div
+        key={session}
+        dir={direction}
+        className={`sshell ${leaving ? "leaving" : ""}`}
+      >
         <span className={`sglow ${glow ? "on" : ""}`} aria-hidden="true">
           <span className="sglow-ring">
             <span className="sglow-rotor" />
@@ -361,6 +365,7 @@ const RecordingOverlay: React.FC = () => {
         open,
         circle,
         labeled,
+        live: !working,
         busy: working,
         arming: !working && !captureReady,
         "wave-in": entrance === "wave",
@@ -411,6 +416,7 @@ const RecordingOverlay: React.FC = () => {
     cardClasses({
       circle: !labeled && (working || entrance === "circle"),
       labeled,
+      live: !working,
       busy: working,
       arming: !working && !captureReady,
       "wave-in": entrance === "wave",

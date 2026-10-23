@@ -36,6 +36,16 @@
   --dark-s-border: color-mix(in srgb, var(--color-text) 12%, transparent);
   --light-s-hair: color-mix(in srgb, var(--color-mid-gray) 12%, transparent);
   --dark-s-hair: color-mix(in srgb, var(--color-text) 8%, transparent);
+  /* Accent strong enough to read as ink on the surface: the deep UI accent on
+     light (the light logo accent can be pastel, e.g. pink), the lighter logo
+     accent on dark. */
+  --light-s-accent-ink: var(--color-background-ui);
+  --dark-s-accent-ink: var(--color-logo-primary);
+  /* Recording fill: the deep UI accent, which every preset keeps dark enough
+     for white content on top. */
+  --s-fill: var(--color-background-ui);
+  --s-on-fill: #fff;
+  --s-on-fill-hair: color-mix(in srgb, #fff 22%, transparent);
 
   /* Active neutrals — default light, flipped by the media query below or forced
      by `data-theme`. */
@@ -44,12 +54,13 @@
   --s-faint: var(--light-s-faint);
   --s-border: var(--light-s-border);
   --s-hair: var(--light-s-hair);
+  --s-accent-ink: var(--light-s-accent-ink);
 
   /* Card geometry — single source of truth for the visible overlay sizes
      (border-box). The native overlay window (overlay.rs) is sized from these: it
      must fit the card's max footprint (--ov-work-w for compact, --ov-open-w for
-     Live) plus --ov-edge-pad on the anchored edge, which leaves room for the
-     working glow. Keep overlay.rs in sync when these change. */
+     Live) plus --ov-edge-pad on the anchored sides, which leaves room for the
+     entrance ping and the glows. Keep overlay.rs in sync when these change. */
   --ov-circle: 40px; /* entrance + finalizing circle */
   --ov-pill-w: 124px; /* listening pill: 6 inset + icon 22 + 8 + wave 52 + 8 +
                          cancel 22 + 6 inset */
@@ -58,7 +69,8 @@
                          center longer labels */
   --ov-open-w: 392px; /* Live panel, expanded */
   --ov-cap-max-h: 64px; /* max height of the scrolling live-text region */
-  --ov-edge-pad: 8px; /* gap to the anchored window edge so the glow isn't clipped */
+  --ov-edge-pad: 12px; /* gap to the anchored window edges so the ping and glows
+                          aren't clipped */
   /* Circle ↔ pill morph (OpenWhispr's grow curve). Keep the duration in sync
      with ENTRANCE_GROW_MS in RecordingOverlay.tsx. */
   --ov-grow: 300ms cubic-bezier(0.2, 0, 0, 1);
@@ -70,6 +82,7 @@
     --s-faint: var(--dark-s-faint);
     --s-border: var(--dark-s-border);
     --s-hair: var(--dark-s-hair);
+    --s-accent-ink: var(--dark-s-accent-ink);
   }
 }
 
@@ -88,6 +101,7 @@
   --s-faint: var(--light-s-faint);
   --s-border: var(--light-s-border);
   --s-hair: var(--light-s-hair);
+  --s-accent-ink: var(--light-s-accent-ink);
 }
 
 :root[data-theme="dark"] {
@@ -96,21 +110,26 @@
   --s-faint: var(--dark-s-faint);
   --s-border: var(--dark-s-border);
   --s-hair: var(--dark-s-hair);
+  --s-accent-ink: var(--dark-s-accent-ink);
 }
 
 /* ============================================================
    Unified overlay stage — one fixed, transparent container shared by the compact
    pill and the Live panel (both render the same `.sshell > .scard`). The card is
-   anchored to the screen-edge side (bottom by default, top when placed up top),
-   --ov-edge-pad off the window edge, and centered horizontally, so only the
-   offsets in overlay.rs move it.
+   anchored to the screen's right edge and to its bottom (or top, when placed up
+   top), --ov-edge-pad inside the window on both, so only the offsets in
+   overlay.rs move it. It grows leftward from there.
    ============================================================ */
 .ov-stage {
   position: fixed;
   inset: 0;
   display: flex;
-  justify-content: center; /* horizontal centering, kept for both forms */
+  /* Physical right regardless of UI language: the shell carries `dir`, the stage
+     stays LTR so flex-end is always the screen's right. */
+  direction: ltr;
+  justify-content: flex-end;
   align-items: flex-end; /* bottom placement */
+  padding-right: var(--ov-edge-pad);
   padding-bottom: var(--ov-edge-pad);
   font-family: var(--s-font);
 }
@@ -190,7 +209,7 @@
   width: var(--ov-pill-w);
   /* Never wider than the window: an unaccounted content zoom degrades to a
      narrower card instead of clipping. */
-  max-width: 100vw;
+  max-width: calc(100vw - 2 * var(--ov-edge-pad));
   border-radius: calc(var(--ov-pill-h) / 2);
   overflow: hidden;
   display: flex;
@@ -200,7 +219,37 @@
   border: 1px solid var(--s-border);
   transition:
     width var(--ov-grow),
-    border-radius var(--ov-grow);
+    border-radius var(--ov-grow),
+    background-color var(--ov-grow),
+    border-color var(--ov-grow);
+}
+/* Listening: a solid accent card with white content, so "the mic is on" reads at
+   a glance from the corner of the eye. On mount it pings twice (rings spreading
+   from its edge), then breathes a soft accent halo for as long as it listens.
+   The open Live panel goes back to the surface so the transcript stays legible. */
+.scard.live:not(.open) {
+  background: var(--s-fill);
+  border-color: var(--s-fill);
+  animation:
+    scard-ping 700ms ease-out 2,
+    scard-breathe 2.4s ease-in-out 1.4s infinite;
+}
+@keyframes scard-ping {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-fill) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+@keyframes scard-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-fill) 30%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 8px 3px color-mix(in srgb, var(--s-fill) 35%, transparent);
+  }
 }
 .scard.circle {
   width: var(--ov-circle);
@@ -372,10 +421,15 @@
   display: flex;
   align-items: center;
   padding-inline: 5px;
-  color: var(--color-text);
+  /* Icon + waveform: accent ink on the surface, white on the listening fill. */
+  color: var(--s-accent-ink);
   transition:
     height var(--ov-grow),
-    padding var(--ov-grow);
+    padding var(--ov-grow),
+    color var(--ov-grow);
+}
+.scard.live:not(.open) .sbase {
+  color: var(--s-on-fill);
 }
 .scard.circle .sbase {
   height: calc(var(--ov-circle) - 2px);
@@ -405,7 +459,7 @@
   transition: opacity 200ms ease-out;
 }
 .scard.arming .sicon {
-  opacity: 0.45;
+  opacity: 0.6;
 }
 .scard.busy .sicon {
   animation: sicon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -500,6 +554,13 @@
 }
 .sx:active {
   transform: scale(0.95);
+}
+.scard.live:not(.open) .sx {
+  color: var(--s-on-fill);
+  background: var(--s-on-fill-hair);
+}
+.scard.live:not(.open) .sx:hover {
+  background: color-mix(in srgb, var(--s-on-fill) 35%, transparent);
 }
 
 /* working label (model loading in the labelled pill, or the open Live panel) */
