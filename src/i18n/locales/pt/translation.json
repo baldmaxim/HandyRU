@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Instalações portáteis não podem ser atualizadas automaticamente. Baixe abaixo o instalador para o seu sistema, execute-o e instale na mesma pasta — a sua pasta Data/ (configurações, modelos, gravações) é mantida.",
     "portableUpdateButton": "Baixar instalador",
     "portableUpdateBrowseMessage": "Instalações portáteis não podem ser atualizadas automaticamente. Baixe a versão mais recente para o seu sistema no GitHub Releases e instale-a na mesma pasta — a sua pasta Data/ (configurações, modelos, gravações) é mantida.",
-    "portableUpdateBrowseButton": "Abrir GitHub Releases"
+    "portableUpdateBrowseButton": "Abrir GitHub Releases",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "common": {
     "loading": "Carregando...",

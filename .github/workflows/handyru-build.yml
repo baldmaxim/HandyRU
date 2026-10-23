@@ -29,3 +29,5 @@ jobs:
       sign-binaries: false
       asset-prefix: "handyru"
       upload-artifacts: true
+    # Updater signing key (TAURI_SIGNING_PRIVATE_KEY[_PASSWORD]).
+    secrets: inherit

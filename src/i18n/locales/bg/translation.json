@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Преносимите инсталации не могат да бъдат актуализирани автоматично. Изтеглете инсталатора за вашата система от бутона по-долу, стартирайте го и инсталирайте в същата папка — папката Data/ (настройки, модели, записи) остава на мястото си.",
     "portableUpdateButton": "Изтегляне на инсталатора",
     "portableUpdateBrowseMessage": "Преносимите инсталации не могат да бъдат актуализирани автоматично. Изтеглете най-новата версия за вашата система от GitHub Releases и я инсталирайте в същата папка — папката Data/ (настройки, модели, записи) остава на мястото си.",
-    "portableUpdateBrowseButton": "Отвори GitHub Releases"
+    "portableUpdateBrowseButton": "Отвори GitHub Releases",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "common": {
     "loading": "Зареждане...",

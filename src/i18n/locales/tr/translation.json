@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Taşınabilir kurulumlar otomatik olarak güncellenemez. Aşağıdan sisteminize uygun yükleyiciyi indirin, çalıştırın ve aynı klasöre kurun — Data/ klasörünüz (ayarlar, modeller, kayıtlar) yerinde kalır.",
     "portableUpdateButton": "Yükleyiciyi indir",
     "portableUpdateBrowseMessage": "Taşınabilir kurulumlar otomatik olarak güncellenemez. Sisteminize uygun en son sürümü GitHub Releases’ten indirin ve aynı klasöre kurun — Data/ klasörünüz (ayarlar, modeller, kayıtlar) yerinde kalır.",
-    "portableUpdateBrowseButton": "GitHub Releases’i aç"
+    "portableUpdateBrowseButton": "GitHub Releases’i aç",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "common": {
     "loading": "Yükleniyor...",

@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Draagbare (portable) installaties kunnen niet automatisch worden bijgewerkt. Download hieronder het installatiebestand voor je systeem, voer het uit en installeer in dezelfde map — je Data/-map (instellingen, modellen, opnames) blijft behouden.",
     "portableUpdateButton": "Installatiebestand downloaden",
     "portableUpdateBrowseMessage": "Draagbare (portable) installaties kunnen niet automatisch worden bijgewerkt. Download de nieuwste versie voor je systeem van GitHub Releases en installeer die in dezelfde map — je Data/-map (instellingen, modellen, opnames) blijft behouden.",
-    "portableUpdateBrowseButton": "GitHub Releases openen"
+    "portableUpdateBrowseButton": "GitHub Releases openen",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "whatsNew": {
     "title": "Nieuw in Handy v{{version}}"

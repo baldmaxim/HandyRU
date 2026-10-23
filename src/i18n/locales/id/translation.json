@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Instalasi portabel tidak dapat diperbarui secara otomatis. Unduh penginstal untuk sistem Anda di bawah ini, jalankan, lalu instal ke folder yang sama — folder Data/ Anda (pengaturan, model, rekaman) tetap dipertahankan.",
     "portableUpdateButton": "Unduh penginstal",
     "portableUpdateBrowseMessage": "Instalasi portabel tidak dapat diperbarui secara otomatis. Unduh versi terbaru untuk sistem Anda dari GitHub Releases dan instal ke folder yang sama — folder Data/ Anda (pengaturan, model, rekaman) tetap dipertahankan.",
-    "portableUpdateBrowseButton": "Buka GitHub Releases"
+    "portableUpdateBrowseButton": "Buka GitHub Releases",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "whatsNew": {
     "title": "Baru di Handy v{{version}}"

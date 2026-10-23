@@ -670,7 +670,12 @@
     "portableUpdateMessage": "Портативные установки нельзя обновить автоматически. Скачайте ниже установщик для вашей системы, запустите его и установите в ту же папку — папка Data/ (настройки, модели, записи) останется на месте.",
     "portableUpdateButton": "Скачать установщик",
     "portableUpdateBrowseMessage": "Портативные установки нельзя обновить автоматически. Скачайте последнюю версию для вашей системы со страницы GitHub Releases и установите её в ту же папку — папка Data/ (настройки, модели, записи) останется на месте.",
-    "portableUpdateBrowseButton": "Открыть GitHub Releases"
+    "portableUpdateBrowseButton": "Открыть GitHub Releases",
+    "restartToUpdate": "Перезапустить и обновить до v{{version}}",
+    "updateReadyTitle": "Обновление HandyRU {{version}} загружено",
+    "updateReadyBody": "Перезапустите, чтобы установить: кнопка внизу окна настроек или «Проверить обновления» в трее.",
+    "updateAvailableTitle": "Доступна HandyRU {{version}}",
+    "updatePortableBody": "Скачайте установщик на странице GitHub Releases."
   },
   "common": {
     "loading": "Загрузка...",

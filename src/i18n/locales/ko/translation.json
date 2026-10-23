@@ -670,7 +670,12 @@
     "portableUpdateMessage": "포터블 설치는 자동으로 업데이트할 수 없습니다. 아래에서 사용 중인 시스템에 맞는 설치 프로그램을 다운로드해 실행하고 같은 폴더에 설치하세요. Data/ 폴더(설정, 모델, 녹음)는 그대로 유지됩니다.",
     "portableUpdateButton": "설치 프로그램 다운로드",
     "portableUpdateBrowseMessage": "포터블 설치는 자동으로 업데이트할 수 없습니다. GitHub Releases에서 사용 중인 시스템에 맞는 최신 버전을 다운로드해 같은 폴더에 설치하세요. Data/ 폴더(설정, 모델, 녹음)는 그대로 유지됩니다.",
-    "portableUpdateBrowseButton": "GitHub Releases 열기"
+    "portableUpdateBrowseButton": "GitHub Releases 열기",
+    "restartToUpdate": "Restart to update to v{{version}}",
+    "updateReadyTitle": "HandyRU {{version}} is ready to install",
+    "updateReadyBody": "Restart to install: use the button at the bottom of the settings window or “Check for updates” in the tray.",
+    "updateAvailableTitle": "HandyRU {{version}} is available",
+    "updatePortableBody": "Download the installer from GitHub Releases."
   },
   "common": {
     "loading": "로딩 중...",
