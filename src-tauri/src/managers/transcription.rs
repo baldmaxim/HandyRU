@@ -1,8 +1,8 @@
 use crate::audio_toolkit::chunking;
 use crate::audio_toolkit::{
-    apply_custom_words, apply_voice_commands, custom_word_aliases, custom_word_terms,
-    detect_output_language, normalize_russian_numbers, normalize_transcription_output,
-    remove_filler_words, OutputLanguageEvidence,
+    apply_custom_words, apply_voice_commands, custom_word_aliases, detect_output_language,
+    normalize_russian_numbers, normalize_transcription_output, remove_filler_words,
+    OutputLanguageEvidence,
 };
 use crate::chinese_script::{convert_chinese_script, ChineseVariety};
 use crate::engine_supervisor::{
@@ -1169,11 +1169,15 @@ fn run_setup(info: &LoadedInfo, settings: &AppSettings, validated_language: &str
     let output_was_translated = run_plan.target_language.as_deref() == Some("en");
     let applied_language_hint = run_plan.language.clone();
 
+    // No `vocabulary`: transcribe-cpp primes Whisper-family models with
+    // "Glossary: term, term, ...", and Whisper echoes that prompt on pauses and
+    // unclear speech and pulls similar-sounding Russian words onto the terms
+    // ("Glossary", "Revit" in the middle of a Russian sentence). The dictionary
+    // is applied after recognition instead, the same way for every model.
     let run_options = RunOptions {
         task: run_plan.task,
         language: run_plan.language,
         target_language: run_plan.target_language,
-        vocabulary: vocabulary_for_model(info.supports_vocabulary, &settings.custom_words),
         ..Default::default()
     };
 
@@ -1410,17 +1414,6 @@ fn with_model_detected_language(
             OutputLanguageEvidence::ModelDetected(language)
         }
         (evidence, _) => evidence,
-    }
-}
-
-/// Custom words for transcribe-cpp's `vocabulary` slot, in priority order.
-/// Empty for models without Feature::Vocabulary, which would warn on every run
-/// and rely on fuzzy correction instead.
-fn vocabulary_for_model(supports_vocabulary: bool, custom_words: &[String]) -> Vec<String> {
-    if supports_vocabulary {
-        custom_word_terms(custom_words)
-    } else {
-        Vec::new()
     }
 }
 
