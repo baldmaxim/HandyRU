@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 use rphonetic::{DoubleMetaphone, Encoder};
+use std::collections::HashSet;
 use strsim::levenshtein;
 
 /// Double Metaphone encoder used for phonetic custom-word matching.
@@ -114,6 +115,9 @@ struct CustomWordMatchKey {
     /// Phonetic code of `latin`. Precomputed so each candidate n-gram costs one
     /// encode, not one per dictionary entry.
     phonetic: Option<PhoneticCode>,
+    /// Whether a Russian word may be matched onto this Latin key by sound. Off
+    /// when the dictionary also gives the term's Russian pronunciation.
+    russian_guess: bool,
 }
 
 impl CustomWordMatchKey {
@@ -129,6 +133,7 @@ impl CustomWordMatchKey {
             script,
             latin,
             phonetic,
+            russian_guess: true,
         }
     }
 }
@@ -367,17 +372,35 @@ fn score_latin_key(
 /// spelling error, the ending would be dropped and the word put in the wrong
 /// case, so a candidate that extends an entry either keeps its ending (single
 /// words) or is left alone.
-fn score_cyrillic_key(candidate: &str, key: &str, allow_ending: bool) -> Option<(f64, usize)> {
+fn score_cyrillic_key(
+    candidate: &str,
+    key: &str,
+    allow_ending: bool,
+    latin_written: bool,
+) -> Option<(f64, usize)> {
     let candidate_len = candidate.chars().count();
     let key_len = key.chars().count();
+    let is_case_ending = |ending: &str| {
+        let len = ending.chars().count();
+        (1..=MAX_CASE_ENDING_LEN).contains(&len) && ending.chars().all(is_russian_letter)
+    };
 
     if let Some(ending) = candidate.strip_prefix(key).filter(|e| !e.is_empty()) {
-        let ending_len = candidate_len - key_len;
-        let keeps_ending = allow_ending
-            && key_len >= MIN_INFLECTED_KEY_LEN
-            && ending_len <= MAX_CASE_ENDING_LEN
-            && ending.chars().all(is_russian_letter);
-        return keeps_ending.then_some((0.0, ending_len));
+        let keeps_ending =
+            allow_ending && key_len >= MIN_INFLECTED_KEY_LEN && is_case_ending(ending);
+        return keeps_ending.then_some((0.0, candidate_len - key_len));
+    }
+
+    // A spoken form ending in "а"/"я" changes that vowel when declined ("ренга"
+    // -> "ренге", "ренгу", "ренгой"). The ending only has to be recognized, not
+    // kept, when the term is written in Latin letters, since it is dropped there.
+    if allow_ending && latin_written && key_len >= MIN_INFLECTED_KEY_LEN {
+        let stem = key.strip_suffix('а').or_else(|| key.strip_suffix('я'));
+        if let Some(ending) = stem.and_then(|stem| candidate.strip_prefix(stem)) {
+            if is_case_ending(ending) {
+                return Some((0.0, ending.chars().count()));
+            }
+        }
     }
 
     let len_diff = candidate_len.abs_diff(key_len) as f64;
@@ -429,6 +452,7 @@ fn find_best_match<'a>(
 
     for custom_word_key in custom_word_match_keys {
         let scored = match custom_word_key.script {
+            KeyScript::Latin if romanized && !custom_word_key.russian_guess => None,
             KeyScript::Latin => score_latin_key(
                 &latin,
                 latin_phonetic.as_ref(),
@@ -437,9 +461,12 @@ fn find_best_match<'a>(
                 romanized,
             )
             .map(|score| (score, 0)),
-            KeyScript::Cyrillic if romanized => {
-                score_cyrillic_key(candidate, &custom_word_key.key, allow_ending)
-            }
+            KeyScript::Cyrillic if romanized => score_cyrillic_key(
+                candidate,
+                &custom_word_key.key,
+                allow_ending,
+                !ends_with_russian_letter(&replacements[custom_word_key.word_index]),
+            ),
             // Latin spelling of a Russian term ("snip" for "СНиП") must match
             // the entry's romanization exactly: English words sit too close
             // phonetically ("ghost" sounds like "gost") to allow any slack.
@@ -572,7 +599,7 @@ pub fn apply_custom_words(text: &str, custom_words: &[String], threshold: f64) -
     let replacements: Vec<String> = entries.iter().map(|(written, _)| written.clone()).collect();
 
     // Pre-compute normalized comparison keys to avoid repeated allocations.
-    let custom_word_match_keys: Vec<CustomWordMatchKey> = entries
+    let mut custom_word_match_keys: Vec<CustomWordMatchKey> = entries
         .iter()
         .enumerate()
         .flat_map(|(index, (_, spoken))| {
@@ -581,6 +608,23 @@ pub fn apply_custom_words(text: &str, custom_words: &[String], threshold: f64) -
                 .flat_map(move |form| build_custom_word_match_keys(form, index))
         })
         .collect();
+
+    // Terms whose Russian pronunciation the dictionary spells out ("ренга =
+    // Renga"). Those forms decide on their own: guessing by sound from the
+    // Latin spelling would also catch ordinary Russian words that happen to
+    // sound alike ("рынка" ~ Renga, "рвать" ~ Revit).
+    let spoken_in_russian: HashSet<&str> = entries
+        .iter()
+        .filter(|(_, spoken)| {
+            spoken
+                .iter()
+                .any(|form| key_script(&build_match_key(form)) == Some(KeyScript::Cyrillic))
+        })
+        .map(|(written, _)| written.as_str())
+        .collect();
+    for key in &mut custom_word_match_keys {
+        key.russian_guess = !spoken_in_russian.contains(replacements[key.word_index].as_str());
+    }
 
     let words: Vec<&str> = text.split_whitespace().collect();
     let mut result = Vec::new();
@@ -1965,5 +2009,49 @@ mod tests {
         for hit in &hits {
             println!("  {hit}");
         }
+    }
+
+    #[test]
+    fn russian_words_do_not_drift_onto_terms_with_russian_pronunciation() {
+        let dict: Vec<String> = [
+            "Revit",
+            "AutoCAD",
+            "Renga",
+            "GitHub",
+            "OpenRouter",
+            "ревит = Revit",
+            "автокад = AutoCAD",
+            "ренга = Renga",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
+        // Ordinary words that merely sound like a term stay as spoken.
+        for phrase in [
+            "цены рынка выросли",
+            "ранга не хватает",
+            "рвать договор",
+            "он рвет бумагу",
+            "рвут сроки",
+            "ринга",
+        ] {
+            assert_eq!(apply_custom_words(phrase, &dict, 0.18), phrase);
+        }
+
+        // The given pronunciations still write the term.
+        assert_eq!(apply_custom_words("ревит", &dict, 0.18), "Revit");
+        assert_eq!(apply_custom_words("автокад", &dict, 0.18), "AutoCAD");
+        assert_eq!(
+            apply_custom_words("модель в ренге", &dict, 0.18),
+            "модель в Renga"
+        );
+        assert_eq!(
+            apply_custom_words("работаю в ревите", &dict, 0.18),
+            "работаю в Revit"
+        );
+        // Terms without a Russian pronunciation are still matched by sound.
+        assert_eq!(apply_custom_words("гитхаб", &dict, 0.18), "GitHub");
+        assert_eq!(apply_custom_words("опен роутер", &dict, 0.18), "OpenRouter");
     }
 }
