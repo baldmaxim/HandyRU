@@ -11,6 +11,7 @@ import { ShowWhatsNewOnUpdate } from "../ShowWhatsNewOnUpdate";
 import { ThemeSelector } from "../ThemeSelector";
 import { AccentColorSelector } from "../AccentColorSelector";
 import { LogDirectory } from "../debug";
+import { UpdateCheckButton } from "./UpdateCheckButton";
 
 export const AboutSettings: React.FC = () => {
   const { t } = useTranslation();
@@ -49,8 +50,11 @@ export const AboutSettings: React.FC = () => {
           description={t("settings.about.version.description")}
           grouped={true}
         >
-          {/* eslint-disable-next-line i18next/no-literal-string */}
-          <span className="text-sm font-mono">v{version}</span>
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line i18next/no-literal-string */}
+            <span className="text-sm font-mono">v{version}</span>
+            <UpdateCheckButton />
+          </div>
         </SettingContainer>
 
         <ShowWhatsNewOnUpdate descriptionMode="tooltip" grouped={true} />

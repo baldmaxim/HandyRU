@@ -650,7 +650,8 @@
       "title": "Quant a",
       "version": {
         "title": "Versió",
-        "description": "Versió actual del Handy"
+        "description": "Versió actual del Handy",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "Mostra les novetats",

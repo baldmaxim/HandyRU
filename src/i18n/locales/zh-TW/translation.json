@@ -650,7 +650,8 @@
       "title": "關於",
       "version": {
         "title": "版本",
-        "description": "Handy 的目前版本"
+        "description": "Handy 的目前版本",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "應用程式資料目錄",

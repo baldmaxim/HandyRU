@@ -650,7 +650,8 @@
       "title": "के बारे में",
       "version": {
         "title": "वर्शन",
-        "description": "Handy का मौजूदा वर्शन"
+        "description": "Handy का मौजूदा वर्शन",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "'नया क्या है' दिखाएं",

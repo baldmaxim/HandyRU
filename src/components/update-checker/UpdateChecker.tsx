@@ -14,6 +14,7 @@ import {
 import { ProgressBar } from "../shared";
 import { useSettings } from "../../hooks/useSettings";
 import { commands } from "../../bindings";
+import { useUpdateStore, type UpdateStage } from "../../stores/updateStore";
 import {
   resolvePortableInstallerUrl,
   PORTABLE_RELEASES_URL,
@@ -28,15 +29,6 @@ interface UpdateCheckerProps {
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const FOCUS_RECHECK_MS = 10 * 60 * 1000;
 
-// idle → (check finds an update) → downloading → ready → installing.
-// Portable installs stop at "available": they can't self-update in place.
-type UpdateStage =
-  | "idle"
-  | "available"
-  | "downloading"
-  | "ready"
-  | "installing";
-
 const notify = async (title: string, body: string) => {
   try {
     let granted = await isPermissionGranted();
@@ -49,11 +41,19 @@ const notify = async (title: string, body: string) => {
 
 const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
   const { t } = useTranslation();
-  const [isChecking, setIsChecking] = useState(false);
-  const [stage, setStage] = useState<UpdateStage>("idle");
-  const [updateVersion, setUpdateVersion] = useState("");
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [showUpToDate, setShowUpToDate] = useState(false);
+  const {
+    stage,
+    version: updateVersion,
+    progress: downloadProgress,
+    isChecking,
+    showUpToDate,
+  } = useUpdateStore();
+  const setIsChecking = (isChecking: boolean) =>
+    useUpdateStore.setState({ isChecking });
+  const setShowUpToDate = (showUpToDate: boolean) =>
+    useUpdateStore.setState({ showUpToDate });
+  const setDownloadProgress = (progress: number) =>
+    useUpdateStore.setState({ progress });
   const [showPortableUpdateDialog, setShowPortableUpdateDialog] =
     useState(false);
   const [portableInstallerUrl, setPortableInstallerUrl] = useState<string>(
@@ -83,12 +83,21 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
 
   const moveTo = (next: UpdateStage) => {
     stageRef.current = next;
-    setStage(next);
+    useUpdateStore.setState({ stage: next });
   };
 
   useEffect(() => {
     // Wait for settings to load before doing anything
     if (!settingsLoaded) return;
+
+    useUpdateStore.setState({
+      enabled: updateChecksEnabled,
+      checkNow: () => checkForUpdates(true),
+      install: () =>
+        stageRef.current === "available"
+          ? setShowPortableUpdateDialog(true)
+          : installUpdate(),
+    });
 
     if (!updateChecksEnabled) {
       if (upToDateTimeoutRef.current) {
@@ -196,7 +205,7 @@ const UpdateChecker: React.FC<UpdateCheckerProps> = ({ className = "" }) => {
       }
 
       setShowUpToDate(false);
-      setUpdateVersion(update.version);
+      useUpdateStore.setState({ version: update.version });
 
       if (await commands.isPortable()) {
         // Portable installs can't self-update in place — the manual dialog links

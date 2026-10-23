@@ -650,7 +650,8 @@
       "title": "정보",
       "version": {
         "title": "버전",
-        "description": "Handy의 현재 버전"
+        "description": "Handy의 현재 버전",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "앱 데이터 디렉토리",

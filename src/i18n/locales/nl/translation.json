@@ -650,7 +650,8 @@
       "title": "Over Handy",
       "version": {
         "title": "Versie",
-        "description": "Huidige versie van Handy"
+        "description": "Huidige versie van Handy",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "Toon 'Wat is er nieuw'",

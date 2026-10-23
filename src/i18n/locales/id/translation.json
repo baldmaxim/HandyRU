@@ -650,7 +650,8 @@
       "title": "Tentang",
       "version": {
         "title": "Versi",
-        "description": "Versi Handy saat ini"
+        "description": "Versi Handy saat ini",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "Tampilkan Yang Baru",

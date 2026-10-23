@@ -650,7 +650,8 @@
       "title": "Om",
       "version": {
         "title": "Version",
-        "description": "Nuvarande version av Handy"
+        "description": "Nuvarande version av Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Mapp för appdata",

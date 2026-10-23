@@ -650,7 +650,8 @@
       "title": "За приложението",
       "version": {
         "title": "Версия",
-        "description": "Текуща версия на Handy"
+        "description": "Текуща версия на Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Папка с данни на приложението",

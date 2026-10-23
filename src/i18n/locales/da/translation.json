@@ -650,7 +650,8 @@
       "title": "Om",
       "version": {
         "title": "Version",
-        "description": "Nuværende version af Handy"
+        "description": "Nuværende version af Handy",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "Vis nyheder",

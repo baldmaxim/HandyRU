@@ -650,7 +650,8 @@
       "title": "Giới thiệu",
       "version": {
         "title": "Phiên bản",
-        "description": "Phiên bản hiện tại của Handy"
+        "description": "Phiên bản hiện tại của Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Thư mục dữ liệu ứng dụng",

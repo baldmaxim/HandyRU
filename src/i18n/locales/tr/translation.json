@@ -650,7 +650,8 @@
       "title": "Hakkında",
       "version": {
         "title": "Sürüm",
-        "description": "Handy'nin mevcut sürümü"
+        "description": "Handy'nin mevcut sürümü",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Uygulama Veri Dizini",

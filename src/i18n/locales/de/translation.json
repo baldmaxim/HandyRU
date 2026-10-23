@@ -650,7 +650,8 @@
       "title": "Info",
       "version": {
         "title": "Version",
-        "description": "Aktuelle Version von Handy"
+        "description": "Aktuelle Version von Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "App-Datenverzeichnis",

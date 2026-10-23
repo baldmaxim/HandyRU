@@ -650,7 +650,8 @@
       "title": "O aplikaci",
       "version": {
         "title": "Verze",
-        "description": "Aktuální verze Handy"
+        "description": "Aktuální verze Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Adresář dat aplikace",

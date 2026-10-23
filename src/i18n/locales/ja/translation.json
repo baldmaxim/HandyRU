@@ -650,7 +650,8 @@
       "title": "概要",
       "version": {
         "title": "バージョン",
-        "description": "Handy の現在のバージョン"
+        "description": "Handy の現在のバージョン",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "アプリデータディレクトリ",

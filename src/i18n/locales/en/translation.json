@@ -650,7 +650,8 @@
       "title": "About",
       "version": {
         "title": "Version",
-        "description": "Current version of Handy"
+        "description": "Current version of Handy",
+        "checkNow": "Check for updates"
       },
       "whatsNewUpdates": {
         "label": "Show What's New",

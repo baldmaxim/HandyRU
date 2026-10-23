@@ -650,7 +650,8 @@
       "title": "Інфо",
       "version": {
         "title": "Версія",
-        "description": "Поточна версія Handy"
+        "description": "Поточна версія Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Папка даних програми",

@@ -650,7 +650,8 @@
       "title": "Acerca de",
       "version": {
         "title": "Versión",
-        "description": "Versión actual de Handy"
+        "description": "Versión actual de Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "Directorio de datos de la aplicación",

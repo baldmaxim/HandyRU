@@ -650,7 +650,8 @@
       "title": "אודות",
       "version": {
         "title": "גרסה",
-        "description": "הגרסה הנוכחית של Handy"
+        "description": "הגרסה הנוכחית של Handy",
+        "checkNow": "Check for updates"
       },
       "appDataDirectory": {
         "title": "תיקיית נתוני אפליקציה",
