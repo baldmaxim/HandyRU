@@ -1,5 +1,40 @@
 import Foundation
 
+/// Бэкенд распознавания: ядро на Rust (CPU, Metal) или Core ML (WhisperKit).
+enum SpikeBackend: String, CaseIterable, Identifiable {
+    case cpu
+    case metal
+    case coreMLNeuralEngine
+    case coreMLCPU
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .cpu: return "CPU"
+        case .metal: return "Metal"
+        case .coreMLNeuralEngine: return "Core ML: Neural Engine"
+        case .coreMLCPU: return "Core ML: CPU"
+        }
+    }
+
+    var isCoreML: Bool {
+        switch self {
+        case .cpu, .metal: return false
+        case .coreMLNeuralEngine, .coreMLCPU: return true
+        }
+    }
+
+    /// Единицы расчёта для Core ML; для остальных бэкендов nil.
+    var coreMLCompute: CoreMLCompute? {
+        switch self {
+        case .cpu, .metal: return nil
+        case .coreMLNeuralEngine: return .neuralEngine
+        case .coreMLCPU: return .cpu
+        }
+    }
+}
+
 /// Сценарии замеров: загрузка модели, запись, распознавание, фоновый тест.
 /// Экран (`ContentView`) только показывает состояние и вызывает методы.
 @MainActor
@@ -14,7 +49,7 @@ final class SpikeController: ObservableObject {
 
     struct LoadedModel {
         let modelID: String
-        let requestedGPU: Bool
+        let requestedBackend: SpikeBackend
         let backend: String
     }
 
@@ -28,7 +63,7 @@ final class SpikeController: ObservableObject {
     let store: ModelStore
 
     @Published var selectedModelID = "turbo"
-    @Published var useGPU = true
+    @Published var selectedBackend: SpikeBackend = .coreMLNeuralEngine
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var loaded: LoadedModel?
     @Published private(set) var resultText = ""
@@ -38,6 +73,7 @@ final class SpikeController: ObservableObject {
     @Published private(set) var lastAudioSeconds = 0.0
 
     private let engine = Engine()
+    private let coreMLEngine = CoreMLEngine()
     private let recorder = Recorder()
     private let sampler = PeakSampler()
     private var lastSamples: [Float] = []
@@ -63,44 +99,82 @@ final class SpikeController: ObservableObject {
 
     func deleteModel(_ model: ModelInfo) async {
         if loaded?.modelID == model.id {
-            await engine.unload()
-            loaded = nil
+            await unloadAll()
             log.info("модель \(model.id) выгружена перед удалением файла")
         }
         store.delete(model)
     }
 
+    func deleteCoreMLModel() async {
+        if loaded?.modelID == ModelStore.coreMLID {
+            await unloadAll()
+            log.info("модель \(ModelStore.coreMLID) выгружена перед удалением файла")
+        }
+        store.deleteCoreML()
+    }
+
+    /// Выгружает оба движка.
+    private func unloadAll() async {
+        await engine.unload()
+        await coreMLEngine.unload()
+        loaded = nil
+    }
+
     func loadModel() async {
         guard phase == .idle else { return }
-        guard let model = selectedModel, store.isDownloaded(model), let url = store.fileURL(for: model) else {
-            status = "Сначала скачайте выбранную модель."
-            return
+        let backend = selectedBackend
+        let modelID: String
+        let title: String
+        let path: String
+        if backend.isCoreML {
+            guard let folder = store.coreMLFolderURL else {
+                status = "Сначала скачайте модель Turbo Core ML."
+                return
+            }
+            modelID = ModelStore.coreMLID
+            title = ModelStore.coreMLTitle
+            path = folder.path
+        } else {
+            guard let model = selectedModel, store.isDownloaded(model), let url = store.fileURL(for: model) else {
+                status = "Сначала скачайте выбранную модель."
+                return
+            }
+            modelID = model.id
+            title = model.title
+            path = url.path
         }
         phase = .loading
-        status = "Загрузка модели \(model.title)…"
+        status = backend.isCoreML
+            ? "Загрузка модели… Первый раз на Neural Engine это может занять несколько минут."
+            : "Загрузка модели \(title)…"
         if loaded != nil {
-            await engine.unload()
-            loaded = nil
+            await unloadAll()
         }
 
-        let requested = useGPU ? "Metal" : "CPU"
+        let requested = backend.coreMLCompute?.logName ?? (backend == .metal ? "Metal" : "CPU")
         let before = Metrics.snapshot()
         sampler.start()
         // Строка «старт» пишется и сбрасывается на диск до вызова ядра: Metal может убить процесс.
-        log.start("загрузка модели \(model.id), запрошен \(requested); footprint=\(Metrics.mb(before.footprintBytes)) МБ, доступно=\(Metrics.mb(before.availableBytes)) МБ, состояние=\(before.appState), thermal=\(before.thermal)")
+        log.start("загрузка модели \(modelID), запрошен \(requested); footprint=\(Metrics.mb(before.footprintBytes)) МБ, доступно=\(Metrics.mb(before.availableBytes)) МБ, состояние=\(before.appState), thermal=\(before.thermal)")
         let started = Date()
         do {
-            let backend = try await engine.load(path: url.path, useGPU: useGPU)
+            let actual: String
+            if let compute = backend.coreMLCompute {
+                try await coreMLEngine.load(folder: URL(fileURLWithPath: path, isDirectory: true), compute: compute)
+                actual = compute.logName
+            } else {
+                actual = try await engine.load(path: path, useGPU: backend == .metal)
+            }
             let seconds = Date().timeIntervalSince(started)
             let peak = sampler.stop()
             let after = Metrics.snapshot()
-            loaded = LoadedModel(modelID: model.id, requestedGPU: useGPU, backend: backend)
+            loaded = LoadedModel(modelID: modelID, requestedBackend: backend, backend: actual)
             status = "Модель загружена за \(Self.fmt(seconds)) с."
-            log.end("загрузка модели ok: \(model.id), запрошен \(requested), бэкенд=\(backend), время=\(Self.fmt(seconds)) с; footprint до=\(Metrics.mb(before.footprintBytes)) после=\(Metrics.mb(after.footprintBytes)) пик=\(Metrics.mb(peak.peakFootprint)) МБ; доступно до=\(Metrics.mb(before.availableBytes)) после=\(Metrics.mb(after.availableBytes)) мин=\(Metrics.mb(peak.minAvailable)) МБ; thermal=\(after.thermal)")
+            log.end("загрузка модели ok: \(modelID), запрошен \(requested), бэкенд=\(actual), время=\(Self.fmt(seconds)) с; footprint до=\(Metrics.mb(before.footprintBytes)) после=\(Metrics.mb(after.footprintBytes)) пик=\(Metrics.mb(peak.peakFootprint)) МБ; доступно до=\(Metrics.mb(before.availableBytes)) после=\(Metrics.mb(after.availableBytes)) мин=\(Metrics.mb(peak.minAvailable)) МБ; thermal=\(after.thermal)")
         } catch {
             _ = sampler.stop()
             status = "Ошибка загрузки: \(error.localizedDescription)"
-            log.end("загрузка модели ОШИБКА: \(model.id), запрошен \(requested): \(error.localizedDescription)")
+            log.end("загрузка модели ОШИБКА: \(modelID), запрошен \(requested): \(error.localizedDescription)")
         }
         phase = .idle
     }
@@ -217,22 +291,29 @@ final class SpikeController: ObservableObject {
         // «Старт» пишется до вызова ядра: в фоне процесс может быть убит прямо внутри.
         log.start("распознавание \(label) аудио=\(Self.fmt(audioSeconds)) с; состояние=\(before.appState) footprint=\(Metrics.mb(before.footprintBytes)) МБ доступно=\(Metrics.mb(before.availableBytes)) МБ thermal=\(before.thermal)")
 
-        let outcome = await engine.transcribe(samples: samples, language: Self.language)
+        let outcome: TranscribeOutcome
+        if model.requestedBackend.isCoreML {
+            outcome = await coreMLEngine.transcribe(samples: samples, language: Self.language)
+        } else {
+            outcome = await engine.transcribe(samples: samples, language: Self.language)
+        }
 
         let peak = sampler.stop()
         let after = Metrics.snapshot()
         let rtf = audioSeconds > 0 ? outcome.seconds / audioSeconds : 0
         let numbers = "аудио=\(Self.fmt(audioSeconds)) с время=\(Self.fmt(outcome.seconds)) с RTF=\(Self.fmt(rtf, digits: 3)) footprint пик=\(Metrics.mb(peak.peakFootprint)) сейчас=\(Metrics.mb(after.footprintBytes)) МБ доступно сейчас=\(Metrics.mb(after.availableBytes)) мин=\(Metrics.mb(peak.minAvailable)) МБ состояние начало=\(before.appState) конец=\(after.appState) thermal=\(after.thermal)"
 
+        let detail = outcome.detail.map { " \($0)" } ?? ""
+
         if let text = outcome.text {
             resultText = text
             status = "Готово: \(Self.fmt(outcome.seconds)) с, RTF \(Self.fmt(rtf, digits: 3))."
-            log.end("\(label) \(numbers) текст=«\(text)»")
+            log.end("\(label) \(numbers)\(detail) текст=«\(text)»")
         } else {
             let message = outcome.error ?? "неизвестная ошибка"
             resultText = ""
             status = "Ошибка распознавания: \(message)"
-            log.end("\(label) \(numbers) ОШИБКА: \(message)")
+            log.end("\(label) \(numbers)\(detail) ОШИБКА: \(message)")
         }
         phase = .idle
     }

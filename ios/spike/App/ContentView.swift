@@ -32,6 +32,54 @@ struct ContentView: View {
 
     private var modelSection: some View {
         Section("Модель") {
+            if controller.selectedBackend.isCoreML {
+                coreMLModelRows
+            } else {
+                ggmlModelRows
+            }
+
+            if !store.message.isEmpty {
+                Text(store.message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Модель Core ML: одна, скачивается отдельно.
+    @ViewBuilder
+    private var coreMLModelRows: some View {
+        let downloaded = store.coreMLDownloaded
+        Text(downloaded
+            ? "\(ModelStore.coreMLTitle) (\(ModelStore.coreMLSizeMB) МБ): скачана"
+            : "\(ModelStore.coreMLTitle) (\(ModelStore.coreMLSizeMB) МБ): не скачана")
+            .font(.subheadline)
+
+        if store.downloadingID == ModelStore.coreMLID {
+            ProgressView(value: store.progress)
+            Text("\(Int(store.progress * 100)) %")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Button("Отменить скачивание", role: .destructive) {
+                store.cancelCoreMLDownload()
+            }
+        } else if downloaded {
+            Button("Удалить файл модели", role: .destructive) {
+                Task { await controller.deleteCoreMLModel() }
+            }
+            .disabled(controller.isBusy)
+        } else {
+            Button("Скачать") {
+                Task { await store.downloadCoreML() }
+            }
+            .disabled(controller.isBusy || store.downloadingID != nil)
+        }
+    }
+
+    /// Модели ggml (CPU, Metal): выбор из каталога.
+    @ViewBuilder
+    private var ggmlModelRows: some View {
+        Group {
             Picker("Модель", selection: $controller.selectedModelID) {
                 ForEach(ModelCatalog.all) { model in
                     Text(model.title).tag(model.id)
@@ -65,12 +113,6 @@ struct ContentView: View {
                     .disabled(controller.isBusy || store.downloadingID != nil)
                 }
             }
-
-            if !store.message.isEmpty {
-                Text(store.message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
     }
 
@@ -78,8 +120,13 @@ struct ContentView: View {
 
     private var backendSection: some View {
         Section("Бэкенд") {
-            Toggle("Metal (GPU); выключено — CPU", isOn: $controller.useGPU)
-                .disabled(controller.isBusy)
+            Picker("Бэкенд", selection: $controller.selectedBackend) {
+                ForEach(SpikeBackend.allCases) { backend in
+                    Text(backend.title).tag(backend)
+                }
+            }
+            .pickerStyle(.menu)
+            .disabled(controller.isBusy)
 
             Button("Загрузить модель") {
                 Task { await controller.loadModel() }
@@ -89,8 +136,8 @@ struct ContentView: View {
             if let loaded = controller.loaded {
                 Text("Загружена: \(loaded.modelID), бэкенд: \(loaded.backend)")
                     .font(.caption)
-                if loaded.requestedGPU != controller.useGPU {
-                    Text("Переключатель не совпадает с загруженной моделью: нажмите «Загрузить модель» ещё раз.")
+                if loaded.requestedBackend != controller.selectedBackend {
+                    Text("Выбранный бэкенд (\(controller.selectedBackend.title)) не совпадает с загруженной моделью: нажмите «Загрузить модель» ещё раз.")
                         .font(.caption)
                         .foregroundStyle(.orange)
                 }

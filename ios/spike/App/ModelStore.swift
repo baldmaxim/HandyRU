@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import WhisperKit
 
 /// Модель из каталога десктопа (src-tauri/src/managers/model.rs): URL, имя файла и sha256 оттуда же.
 struct ModelInfo: Identifiable, Hashable {
@@ -48,7 +49,19 @@ final class ModelStore: ObservableObject {
     @Published private(set) var progress = 0.0
     @Published private(set) var message = ""
 
+    /// Идентификатор модели Core ML: в `downloadingID` и в журнале.
+    static let coreMLID = "turbo-coreml-632"
+    static let coreMLTitle = "Turbo Core ML"
+    static let coreMLSizeMB = 632
+    /// Путь к папке модели Core ML относительно Application Support (абсолютный путь контейнера может меняться).
+    private static let coreMLPathKey = "coreml.modelRelativePath"
+    /// Обязательный файл в папке модели: по нему определяется, что модель скачана.
+    private static let coreMLMarkerFile = "AudioEncoder.mlmodelc"
+
+    @Published private(set) var coreMLDownloaded = false
+
     private var downloader: Downloader?
+    private var coreMLTask: Task<URL, Error>?
 
     init() {
         refresh()
@@ -72,6 +85,7 @@ final class ModelStore: ObservableObject {
             }
         }
         downloadedIDs = found
+        coreMLDownloaded = coreMLFolderURL != nil
     }
 
     func download(_ model: ModelInfo) async {
@@ -138,7 +152,97 @@ final class ModelStore: ObservableObject {
         refresh()
     }
 
+    // MARK: - Core ML
+
+    /// Папка модели Core ML, если она скачана целиком (путь сохраняется только после успешного скачивания).
+    var coreMLFolderURL: URL? {
+        guard let relative = UserDefaults.standard.string(forKey: Self.coreMLPathKey),
+            let support = try? Self.applicationSupportDirectory()
+        else { return nil }
+        let folder = support.appendingPathComponent(relative, isDirectory: true)
+        let marker = folder.appendingPathComponent(Self.coreMLMarkerFile)
+        return FileManager.default.fileExists(atPath: marker.path) ? folder : nil
+    }
+
+    func downloadCoreML() async {
+        guard downloadingID == nil else { return }
+        downloadingID = Self.coreMLID
+        progress = 0
+        message = "Скачивание \(Self.coreMLTitle) (\(Self.coreMLSizeMB) МБ). Не сворачивайте приложение."
+        defer {
+            downloadingID = nil
+            coreMLTask = nil
+        }
+
+        let task = Task { [weak self] () -> URL in
+            let base = try Self.coreMLBaseDirectory()
+            return try await WhisperKit.download(
+                variant: CoreMLEngine.modelVariant,
+                downloadBase: base,
+                progressCallback: { info in
+                    let value = info.fractionCompleted
+                    Task { @MainActor in self?.progress = value }
+                }
+            )
+        }
+        coreMLTask = task
+        do {
+            let folder = try await task.value
+            let support = try Self.applicationSupportDirectory()
+            let prefix = support.standardizedFileURL.path + "/"
+            let full = folder.standardizedFileURL.path
+            guard full.hasPrefix(prefix) else {
+                throw EngineError.message("папка модели вне Application Support: \(full)")
+            }
+            UserDefaults.standard.set(String(full.dropFirst(prefix.count)), forKey: Self.coreMLPathKey)
+            guard coreMLFolderURL != nil else {
+                UserDefaults.standard.removeObject(forKey: Self.coreMLPathKey)
+                throw EngineError.message("после скачивания нет \(Self.coreMLMarkerFile)")
+            }
+            progress = 1
+            message = "\(Self.coreMLTitle): скачана."
+        } catch {
+            message = task.isCancelled ? "Скачивание отменено." : "Ошибка скачивания: \(error.localizedDescription)"
+        }
+        refresh()
+    }
+
+    func cancelCoreMLDownload() {
+        coreMLTask?.cancel()
+    }
+
+    func deleteCoreML() {
+        UserDefaults.standard.removeObject(forKey: Self.coreMLPathKey)
+        do {
+            let base = try Self.coreMLBaseDirectory()
+            try FileManager.default.removeItem(at: base)
+            message = "\(Self.coreMLTitle): удалена."
+        } catch {
+            message = "Не удалось удалить: \(error.localizedDescription)"
+        }
+        refresh()
+    }
+
     // MARK: - Файлы
+
+    nonisolated static func applicationSupportDirectory() throws -> URL {
+        try FileManager.default.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+    }
+
+    /// Application Support/coreml, исключён из резервной копии: сюда WhisperKit кладёт модель (`downloadBase`).
+    nonisolated static func coreMLBaseDirectory() throws -> URL {
+        var dir = try applicationSupportDirectory().appendingPathComponent("coreml", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try? dir.setResourceValues(values)
+        return dir
+    }
 
     /// Application Support/Models, исключён из резервной копии.
     nonisolated static func modelsDirectory() throws -> URL {

@@ -6,6 +6,8 @@ struct TranscribeOutcome {
     let error: String?
     /// Чистое время вызова ядра, секунды.
     let seconds: Double
+    /// Дополнительные числа для журнала (например, тайминги Core ML); у остальных движков пусто.
+    var detail: String? = nil
 }
 
 enum EngineError: LocalizedError {
