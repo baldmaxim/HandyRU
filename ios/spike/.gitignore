@@ -1,0 +1,6 @@
+lib/
+core/target/
+*.xcodeproj
+DerivedData/
+# Info.plist и entitlements, которые создаёт xcodegen
+Generated/

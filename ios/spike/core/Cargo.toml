@@ -1,0 +1,25 @@
+[package]
+name = "handy_spike_core"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Одноразовое ядро для замеров Whisper на iPhone (C ABI поверх transcribe-cpp)"
+
+[lib]
+name = "handy_spike_core"
+crate-type = ["staticlib"]
+
+[dependencies]
+transcribe-cpp = { version = "0.4.0", default-features = false }
+
+[features]
+# Metal собирается только под iOS/macOS; на Linux проверки идут без него.
+metal = ["transcribe-cpp/metal"]
+
+[profile.release]
+opt-level = 3
+lto = false
+debug = false
+
+# Самостоятельный крейт: не входит в рабочее пространство src-tauri.
+[workspace]
