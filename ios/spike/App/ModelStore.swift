@@ -129,7 +129,7 @@ final class ModelStore: ObservableObject {
             values.isExcludedFromBackup = true
             try? finalURL.setResourceValues(values)
 
-            message = "\(model.title): скачана, sha256 совпал."
+            message = "\(model.title): скачана, sha256 совпал"
             refresh()
         } catch {
             if let partURL { try? FileManager.default.removeItem(at: partURL) }
@@ -145,7 +145,7 @@ final class ModelStore: ObservableObject {
         guard let url = fileURL(for: model) else { return }
         do {
             try FileManager.default.removeItem(at: url)
-            message = "\(model.title): удалена."
+            message = "\(model.title): удалена"
         } catch {
             message = "Не удалось удалить: \(error.localizedDescription)"
         }
@@ -200,9 +200,9 @@ final class ModelStore: ObservableObject {
                 throw EngineError.message("после скачивания нет \(Self.coreMLMarkerFile)")
             }
             progress = 1
-            message = "\(Self.coreMLTitle): скачана."
+            message = "\(Self.coreMLTitle): скачана"
         } catch {
-            message = task.isCancelled ? "Скачивание отменено." : "Ошибка скачивания: \(error.localizedDescription)"
+            message = task.isCancelled ? "Скачивание отменено" : "Ошибка скачивания: \(error.localizedDescription)"
         }
         refresh()
     }
@@ -216,7 +216,7 @@ final class ModelStore: ObservableObject {
         do {
             let base = try Self.coreMLBaseDirectory()
             try FileManager.default.removeItem(at: base)
-            message = "\(Self.coreMLTitle): удалена."
+            message = "\(Self.coreMLTitle): удалена"
         } catch {
             message = "Не удалось удалить: \(error.localizedDescription)"
         }

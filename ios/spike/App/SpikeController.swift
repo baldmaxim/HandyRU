@@ -51,6 +51,17 @@ final class SpikeController: ObservableObject {
         let modelID: String
         let requestedBackend: SpikeBackend
         let backend: String
+        let title: String
+    }
+
+    /// Итог последнего успешного распознавания для блока результата.
+    struct RunResult {
+        let seconds: Double
+        let rtf: Double
+        let audioSeconds: Double
+        let modelTitle: String
+        let backendTitle: String
+        let modeTitle: String
     }
 
     /// Длительность записи в фоновом тесте, секунды.
@@ -67,7 +78,12 @@ final class SpikeController: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var loaded: LoadedModel?
     @Published private(set) var resultText = ""
-    @Published private(set) var status = ""
+    @Published private(set) var status = "" {
+        didSet { statusIsError = false }
+    }
+    /// Статус — ошибка (экран красит его красным). Сбрасывается любой новой записью в `status`.
+    @Published private(set) var statusIsError = false
+    @Published private(set) var lastResult: RunResult?
     @Published private(set) var capturedSeconds = 0.0
     @Published private(set) var countdown = 0
     @Published private(set) var lastAudioSeconds = 0.0
@@ -128,7 +144,7 @@ final class SpikeController: ObservableObject {
         let path: String
         if backend.isCoreML {
             guard let folder = store.coreMLFolderURL else {
-                status = "Сначала скачайте модель Turbo Core ML."
+                status = "Сначала скачайте модель Turbo Core ML"
                 return
             }
             modelID = ModelStore.coreMLID
@@ -136,7 +152,7 @@ final class SpikeController: ObservableObject {
             path = folder.path
         } else {
             guard let model = selectedModel, store.isDownloaded(model), let url = store.fileURL(for: model) else {
-                status = "Сначала скачайте выбранную модель."
+                status = "Сначала скачайте выбранную модель"
                 return
             }
             modelID = model.id
@@ -168,12 +184,12 @@ final class SpikeController: ObservableObject {
             let seconds = Date().timeIntervalSince(started)
             let peak = sampler.stop()
             let after = Metrics.snapshot()
-            loaded = LoadedModel(modelID: modelID, requestedBackend: backend, backend: actual)
-            status = "Модель загружена за \(Self.fmt(seconds)) с."
+            loaded = LoadedModel(modelID: modelID, requestedBackend: backend, backend: actual, title: title)
+            status = "Модель загружена за \(SpikeFormat.seconds(seconds))"
             log.end("загрузка модели ok: \(modelID), запрошен \(requested), бэкенд=\(actual), время=\(Self.fmt(seconds)) с; footprint до=\(Metrics.mb(before.footprintBytes)) после=\(Metrics.mb(after.footprintBytes)) пик=\(Metrics.mb(peak.peakFootprint)) МБ; доступно до=\(Metrics.mb(before.availableBytes)) после=\(Metrics.mb(after.availableBytes)) мин=\(Metrics.mb(peak.minAvailable)) МБ; thermal=\(after.thermal)")
         } catch {
             _ = sampler.stop()
-            status = "Ошибка загрузки: \(error.localizedDescription)"
+            fail("Ошибка загрузки: \(error.localizedDescription)")
             log.end("загрузка модели ОШИБКА: \(modelID), запрошен \(requested): \(error.localizedDescription)")
         }
         phase = .idle
@@ -198,13 +214,13 @@ final class SpikeController: ObservableObject {
             phase = .idle
             return
         }
-        await runTranscription(samples: samples, mode: "передний план")
+        await runTranscription(samples: samples, mode: "передний план", modeTitle: "Запись")
     }
 
     /// Повторное распознавание того же аудио (например, после смены бэкенда).
     func repeatOnLastRecording() async {
         guard phase == .idle, !lastSamples.isEmpty else { return }
-        await runTranscription(samples: lastSamples, mode: "повтор той же записи")
+        await runTranscription(samples: lastSamples, mode: "повтор той же записи", modeTitle: "Повтор")
     }
 
     // MARK: - Фоновый тест
@@ -214,7 +230,7 @@ final class SpikeController: ObservableObject {
     func startBackgroundTest() async {
         guard phase == .idle else { return }
         guard loaded != nil else {
-            status = "Сначала загрузите модель."
+            status = "Сначала загрузите модель"
             return
         }
         guard await beginCapture() else { return }
@@ -238,7 +254,7 @@ final class SpikeController: ObservableObject {
         recorder.enterKeepAlive()
         log.info("фоновый тест: собрано \(Self.fmt(Double(samples.count) / Recorder.sampleRate)) с аудио из \(Self.backgroundSeconds), состояние=\(Metrics.appStateName())")
         if acceptRecording(samples) {
-            await runTranscription(samples: samples, mode: "фоновый тест")
+            await runTranscription(samples: samples, mode: "фоновый тест", modeTitle: "Фоновый тест")
         } else {
             phase = .idle
         }
@@ -251,14 +267,14 @@ final class SpikeController: ObservableObject {
     /// Разрешение на микрофон и запуск записи. При отказе пишет причину в статус.
     private func beginCapture() async -> Bool {
         guard await Recorder.ensurePermission() else {
-            status = "Нет доступа к микрофону. Разрешите его в Настройки → Handy Spike."
+            fail("Нет доступа к микрофону. Разрешите его в Настройки → Handy Spike.")
             return false
         }
         do {
             try recorder.start()
             return true
         } catch {
-            status = "Не удалось начать запись: \(error.localizedDescription)"
+            fail("Не удалось начать запись: \(error.localizedDescription)")
             log.info("не удалось начать запись: \(error.localizedDescription)")
             return false
         }
@@ -266,7 +282,7 @@ final class SpikeController: ObservableObject {
 
     private func acceptRecording(_ samples: [Float]) -> Bool {
         guard samples.count >= Self.minSamples else {
-            status = "Запись слишком короткая (\(Self.fmt(Double(samples.count) / Recorder.sampleRate)) с)."
+            status = "Запись слишком короткая (\(SpikeFormat.seconds(Double(samples.count) / Recorder.sampleRate)))"
             log.info(status)
             recorder.stop()
             return false
@@ -276,13 +292,14 @@ final class SpikeController: ObservableObject {
         return true
     }
 
-    private func runTranscription(samples: [Float], mode: String) async {
+    private func runTranscription(samples: [Float], mode: String, modeTitle: String) async {
         guard let model = loaded else {
-            status = "Сначала загрузите модель."
+            status = "Сначала загрузите модель"
             phase = .idle
             return
         }
         phase = .transcribing
+        lastResult = nil
         status = "Распознавание…"
         let audioSeconds = Double(samples.count) / Recorder.sampleRate
         let before = Metrics.snapshot()
@@ -307,15 +324,30 @@ final class SpikeController: ObservableObject {
 
         if let text = outcome.text {
             resultText = text
-            status = "Готово: \(Self.fmt(outcome.seconds)) с, RTF \(Self.fmt(rtf, digits: 3))."
+            lastResult = RunResult(
+                seconds: outcome.seconds,
+                rtf: rtf,
+                audioSeconds: audioSeconds,
+                modelTitle: model.title,
+                backendTitle: model.requestedBackend.title,
+                modeTitle: modeTitle
+            )
+            // Время показывает блок результата.
+            status = ""
             log.end("\(label) \(numbers)\(detail) текст=«\(text)»")
         } else {
             let message = outcome.error ?? "неизвестная ошибка"
             resultText = ""
-            status = "Ошибка распознавания: \(message)"
+            fail("Ошибка распознавания: \(message)")
             log.end("\(label) \(numbers)\(detail) ОШИБКА: \(message)")
         }
         phase = .idle
+    }
+
+    /// Ошибка в статусе: экран красит её красным.
+    private func fail(_ text: String) {
+        status = text
+        statusIsError = true
     }
 
     private func startMeter() {

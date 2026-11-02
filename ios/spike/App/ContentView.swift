@@ -20,9 +20,13 @@ struct ContentView: View {
                 resultSection
                 logSection
             }
+            // Заголовки секций обычным регистром, не капсом.
+            .textCase(nil)
             .navigationTitle("Handy Spike")
             .navigationBarTitleDisplayMode(.inline)
         }
+        // Обычные кнопки нейтральные; синие только запись/стоп и шкала.
+        .tint(Color.primary)
         .onChange(of: scenePhase) { _, newPhase in
             log.info("приложение: \(Self.scenePhaseName(newPhase))")
         }
@@ -59,15 +63,15 @@ struct ContentView: View {
             ProgressView(value: store.progress)
             Text("\(Int(store.progress * 100)) %")
                 .font(.caption)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
-            Button("Отменить скачивание", role: .destructive) {
+            Button("Отменить скачивание") {
                 store.cancelCoreMLDownload()
             }
         } else if downloaded {
-            Button("Удалить файл модели", role: .destructive) {
+            DeleteModelButton(disabled: controller.isBusy) {
                 Task { await controller.deleteCoreMLModel() }
             }
-            .disabled(controller.isBusy)
         } else {
             Button("Скачать") {
                 Task { await store.downloadCoreML() }
@@ -97,15 +101,15 @@ struct ContentView: View {
                     ProgressView(value: store.progress)
                     Text("\(Int(store.progress * 100)) %")
                         .font(.caption)
+                        .monospacedDigit()
                         .foregroundStyle(.secondary)
-                    Button("Отменить скачивание", role: .destructive) {
+                    Button("Отменить скачивание") {
                         store.cancelDownload()
                     }
                 } else if downloaded {
-                    Button("Удалить файл модели", role: .destructive) {
+                    DeleteModelButton(disabled: controller.isBusy) {
                         Task { await controller.deleteModel(model) }
                     }
-                    .disabled(controller.isBusy)
                 } else {
                     Button("Скачать") {
                         Task { await store.download(model) }
@@ -134,12 +138,17 @@ struct ContentView: View {
             .disabled(controller.isBusy || store.downloadingID != nil)
 
             if let loaded = controller.loaded {
-                Text("Загружена: \(loaded.modelID), бэкенд: \(loaded.backend)")
+                Text("Загружена: \(loaded.title), \(loaded.requestedBackend.title)")
                     .font(.caption)
-                if loaded.requestedBackend != controller.selectedBackend {
-                    Text("Выбранный бэкенд (\(controller.selectedBackend.title)) не совпадает с загруженной моделью: нажмите «Загрузить модель» ещё раз.")
+                // Реальный бэкенд из ядра показываем, только если он не совпал с запросом.
+                if loaded.requestedBackend == .metal && !loaded.backend.contains("Metal") {
+                    Text("Запрошен Metal, ядро выбрало: \(loaded.backend)")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                }
+                if loaded.requestedBackend != controller.selectedBackend
+                    || (!controller.selectedBackend.isCoreML && loaded.modelID != controller.selectedModelID) {
+                    Text("Выбор изменён. Нажмите «Загрузить модель», чтобы применить")
+                        .font(.caption)
                 }
             } else {
                 Text("Модель не загружена")
@@ -156,16 +165,26 @@ struct ContentView: View {
             let ready = controller.loaded != nil
 
             if controller.phase == .recording {
-                Button("Стоп и распознать") {
+                Button {
                     Task { await controller.stopAndTranscribe() }
+                } label: {
+                    Text("Стоп и распознать")
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
-                Text("Записано: \(String(format: "%.1f", controller.capturedSeconds)) с")
+                .tint(Color("HandyAccent"))
+                Text("Записано: \(SpikeFormat.seconds(controller.capturedSeconds, digits: 1))")
                     .font(.caption)
+                    .monospacedDigit()
             } else {
-                Button("Запись") {
+                Button {
                     Task { await controller.startRecording() }
+                } label: {
+                    Text("Запись")
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
+                .buttonStyle(.borderedProminent)
+                .tint(Color("HandyAccent"))
                 .disabled(controller.isBusy || !ready)
             }
 
@@ -174,7 +193,7 @@ struct ContentView: View {
             }
             .disabled(controller.isBusy || !ready || controller.lastAudioSeconds == 0)
             if controller.lastAudioSeconds > 0 {
-                Text("Последняя запись: \(String(format: "%.1f", controller.lastAudioSeconds)) с")
+                Text("Последняя запись: \(SpikeFormat.seconds(controller.lastAudioSeconds))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -184,9 +203,9 @@ struct ContentView: View {
             }
             .disabled(controller.isBusy || !ready)
             if controller.phase == .backgroundRecording {
-                Text("Осталось: \(controller.countdown) с. Идёт запись \(String(format: "%.1f", controller.capturedSeconds)) с. Сверните приложение и говорите.")
+                Text("Осталось: \(controller.countdown) с. Идёт запись \(SpikeFormat.seconds(controller.capturedSeconds, digits: 1)). Сверните приложение и говорите.")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .monospacedDigit()
             }
 
             if controller.phase == .loading || controller.phase == .transcribing {
@@ -198,7 +217,7 @@ struct ContentView: View {
             if !controller.status.isEmpty {
                 Text(controller.status)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(controller.statusIsError ? Color.red : Color.secondary)
             }
         }
     }
@@ -207,31 +226,33 @@ struct ContentView: View {
 
     private var resultSection: some View {
         Section("Результат") {
-            Text(controller.resultText.isEmpty ? "—" : controller.resultText)
-                .textSelection(.enabled)
+            if let result = controller.lastResult {
+                ResultBlock(result: result, text: controller.resultText)
+            } else {
+                Text("Пока нет замеров")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
     // MARK: - Журнал
 
     private var logSection: some View {
-        Section("Журнал (последние \(Self.visibleLogLines) строк)") {
-            HStack {
-                Button("Скопировать журнал") {
-                    UIPasteboard.general.string = log.text
-                }
-                .buttonStyle(.bordered)
-                Button("Очистить журнал", role: .destructive) {
-                    log.clear()
-                }
-                .buttonStyle(.bordered)
+        Section("Журнал") {
+            Button("Скопировать журнал") {
+                UIPasteboard.general.string = log.text
             }
             ShareLink(item: log.fileURL) {
                 Label("Поделиться файлом журнала", systemImage: "square.and.arrow.up")
             }
-            Text(visibleLog)
-                .font(.system(.caption2, design: .monospaced))
-                .textSelection(.enabled)
+            Button("Очистить журнал") {
+                log.clear()
+            }
+            DisclosureGroup("Последние \(Self.visibleLogLines) строк") {
+                Text(visibleLog)
+                    .font(.system(.caption2, design: .monospaced))
+                    .textSelection(.enabled)
+            }
         }
     }
 

@@ -8,6 +8,7 @@
 - `App/` — SwiftUI-приложение: скачивание моделей, запись с микрофона, распознавание, журнал замеров.
 - `build-core.sh` — собирает ядро под iPhone и генерирует проект Xcode.
 - `project.yml` — описание проекта для XcodeGen.
+- `icon/handyspike-icon.svg` — исходник иконки приложения; PNG лежит в `App/Assets.xcassets/AppIcon.appiconset`.
 
 ## Что установить (один раз)
 
@@ -72,7 +73,7 @@ Turbo через Core ML (WhisperKit 1.1.1, модель `openai_whisper-large-v
 
 **Обновление и сборка.** `git pull`, затем `bash ios/spike/build-core.sh`. Пакет WhisperKit Xcode подтянет сам при открытии проекта (нужен интернет).
 
-**Подпись.** Проект просит разрешение `com.apple.developer.background-tasks.continued-processing.inference` (Neural Engine в фоне на iOS 27). Если Xcode откажется его подписывать: пришлите текст ошибки, затем удалите эту строку из `project.yml`, выполните `xcodegen generate` в папке `ios/spike` и соберите снова. В отчёте укажите, собрано с разрешением или без.
+**Подпись.** Разрешение `com.apple.developer.background-tasks.continued-processing.inference` в проект не входит: Apple отклонила его при подписи. На iPhone 15 Pro Max с iOS 27.2 Neural Engine работал в фоне и без него, при включённой записи звука. Это расходится с документацией Apple и может измениться с обновлением iOS.
 
 **Запуск** с иконки на iPhone, не под отладчиком (как и для остальных замеров).
 
