@@ -3,6 +3,13 @@ import CoreML
 import Foundation
 import WhisperKit
 
+/// Файлы модели неполные или повреждены. Пользователю — короткий текст, подробности — в `detail` (для журнала).
+struct ModelFilesError: LocalizedError {
+    let detail: String
+
+    var errorDescription: String? { "Файл модели повреждён. Скачайте её заново." }
+}
+
 /// Единицы расчёта Core ML.
 enum CoreMLCompute {
     case neuralEngine
@@ -58,7 +65,7 @@ actor CoreMLEngine {
         for name in ["MelSpectrogram", "TextDecoder", "AudioEncoder"] {
             let url = folder.appendingPathComponent(name + ".mlmodelc")
             guard FileManager.default.fileExists(atPath: url.path) else {
-                throw EngineError.message("Отсутствует \(name).mlmodelc. Скачайте модель заново.")
+                throw ModelFilesError(detail: "Отсутствует \(name).mlmodelc. Скачайте модель заново.")
             }
             log.info("Core ML [\(session)]: \(name) \(Self.manifest(at: url))")
         }

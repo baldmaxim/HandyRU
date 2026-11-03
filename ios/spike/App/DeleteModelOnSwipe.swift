@@ -22,7 +22,7 @@ struct DeleteModelOnSwipe: ViewModifier {
             }
         }
         .confirmationDialog(
-            "Удалить файл модели? Потом его придётся скачивать заново",
+            "Удалить модель? Потом её придётся скачивать заново.",
             isPresented: $isConfirming,
             titleVisibility: .visible
         ) {

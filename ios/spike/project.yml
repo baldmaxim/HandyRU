@@ -10,6 +10,9 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+    # Версии приложения и виджета обязаны совпадать.
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
 
 packages:
   argmax-oss-swift:
@@ -23,6 +26,11 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App
+        excludes:
+          - PrivacyInfo.xcprivacy
+      # Манифест приватности: явно в ресурсы, чтобы попал в корень бандла.
+      - path: App/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: Shared
     settings:
       base:
@@ -55,7 +63,10 @@ targets:
     info:
       path: Generated/Info.plist
       properties:
-        CFBundleDisplayName: Handy Spike
+        CFBundleDisplayName: Handy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
           - CFBundleURLName: com.handyru.spike.dictation
@@ -64,7 +75,7 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        NSMicrophoneUsageDescription: Нужен микрофон, чтобы записать речь и замерить распознавание.
+        NSMicrophoneUsageDescription: Нужен микрофон, чтобы распознавать вашу речь. Звук обрабатывается на iPhone и никуда не отправляется.
         UIBackgroundModes:
           - audio
         # Журнал лежит в Documents: виден в приложении «Файлы» даже после аварийного завершения.
@@ -87,12 +98,16 @@ targets:
         PRODUCT_NAME: HandyDictationWidget
         TARGETED_DEVICE_FAMILY: "1"
         SUPPORTED_PLATFORMS: iphoneos
+        # Команду (Team) выбирает пользователь в Xcode: Signing & Capabilities.
+        DEVELOPMENT_TEAM: ""
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: true
     info:
       path: Generated/DictationWidget-Info.plist
       properties:
-        CFBundleDisplayName: Handy Dictation
+        CFBundleDisplayName: Handy
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
 

@@ -24,13 +24,19 @@ final class Recorder {
     var onEvent: ((String) -> Void)?
     var onInterruption: (() -> Void)?
 
-    private let engine = AVAudioEngine()
+    /// Пересоздаётся после сброса медиасервисов iOS.
+    private var engine = AVAudioEngine()
     private let lock = NSLock()
     private var samples: [Float] = []
     private var keepAlive = false
     private var rawPeak: Float = 0
     private var rawSamples = 0
     private var conversionErrors = 0
+    /// Пик с прошлого опроса `takeIntervalPeak()` (для индикатора уровня).
+    private var intervalPeak: Float = 0
+    /// Время начала фразы (systemUptime) и признак, что перезапуск захвата на ней уже был.
+    private var phraseStarted: TimeInterval = 0
+    private var zeroRecoveryDone = false
 
     var receivingSilentBuffers: Bool {
         lock.withLock { rawSamples > 0 && rawPeak == 0 }
@@ -68,6 +74,11 @@ final class Recorder {
 
     var isRunning: Bool { running && engine.isRunning }
 
+    /// Входной маршрут аудиосессии для журнала.
+    var routeDescription: String {
+        AVAudioSession.sharedInstance().currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")
+    }
+
     /// Начинает запись (буфер обнуляется). Вызывать только на переднем плане:
     /// из фона активировать аудиосессию нельзя.
     func start() throws {
@@ -77,17 +88,128 @@ final class Recorder {
         rawPeak = 0
         rawSamples = 0
         conversionErrors = 0
+        intervalPeak = 0
+        phraseStarted = ProcessInfo.processInfo.systemUptime
+        zeroRecoveryDone = false
         captureGeneration += 1
         lock.unlock()
-        if running { return }
+        if running {
+            if engine.isRunning { return }
+            // Движок остановился сам (например, после смены конфигурации): запускаем заново.
+            teardownEngine()
+        }
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .default, options: [])
         try session.setActive(true)
+        do {
+            try startCapture(session: session)
+        } catch {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw error
+        }
+        running = true
+        observe()
+    }
 
+    /// Нулевой сигнал: на фразе ещё не было перезапуска, запись идёт (не keepAlive),
+    /// с начала прошло `seconds`, а сырой пик по-прежнему 0.
+    func needsZeroSignalRestart(after seconds: TimeInterval) -> Bool {
+        lock.withLock {
+            running && !keepAlive && !zeroRecoveryDone && rawPeak == 0
+                && ProcessInfo.processInfo.systemUptime - phraseStarted >= seconds
+        }
+    }
+
+    /// Перезапускает захват: tap снимается, движок останавливается, tap ставится заново.
+    /// На переднем плане (`resetSession`) перед этим сессия деактивируется и активируется.
+    /// Накопленный буфер очищается. Один раз на фразу.
+    func restartCapture(resetSession: Bool) throws {
+        lock.withLock { zeroRecoveryDone = true }
+        guard running else { throw RecorderError.noInput }
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        let session = AVAudioSession.sharedInstance()
+        do {
+            if resetSession {
+                try session.setActive(false, options: .notifyOthersOnDeactivation)
+                try session.setActive(true)
+            }
+            lock.lock()
+            samples.removeAll(keepingCapacity: true)
+            rawPeak = 0
+            rawSamples = 0
+            conversionErrors = 0
+            intervalPeak = 0
+            captureGeneration += 1
+            lock.unlock()
+            try startCapture(session: session)
+        } catch {
+            teardownEngine()
+            throw error
+        }
+    }
+
+    /// Последний пик с прошлого вызова (0…1, линейная шкала сырого сигнала).
+    func takeIntervalPeak() -> Float {
+        lock.withLock {
+            let peak = intervalPeak
+            intervalPeak = 0
+            return peak
+        }
+    }
+
+    /// Забирает накопленные сэмплы и очищает буфер.
+    func takeSamples() -> [Float] {
+        lock.lock()
+        defer { lock.unlock() }
+        let taken = samples
+        samples.removeAll(keepingCapacity: true)
+        return taken
+    }
+
+    /// Движок продолжает работать, сэмплы отбрасываются.
+    func enterKeepAlive() {
+        lock.lock()
+        keepAlive = true
+        captureGeneration += 1
+        samples.removeAll(keepingCapacity: true)
+        lock.unlock()
+    }
+
+    func stop() {
+        guard running else { return }
+        teardownEngine()
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    /// После `mediaServicesWereReset` старые аудиообъекты непригодны: движок создаётся заново.
+    func resetAfterMediaServicesReset() {
+        teardownEngine()
+        engine = AVAudioEngine()
+        converter = nil
+        targetFormat = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    // MARK: - Внутреннее
+
+    /// Снимает tap и останавливает движок; сессию не трогает.
+    private func teardownEngine() {
+        engine.inputNode.removeTap(onBus: 0)
+        engine.stop()
+        running = false
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        observers.removeAll()
+    }
+
+    /// Конвертер в 16 кГц mono, tap и запуск движка. Сессия уже активна.
+    private func startCapture(session: AVAudioSession) throws {
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
-        onEvent?("микрофон: route=\(session.currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")); input=\(inputFormat); sessionRate=\(session.sampleRate); inputMuted=\(AVAudioApplication.shared.isInputMuted); inputAvailable=\(session.isInputAvailable); inputGain=\(session.inputGain)")
+        onEvent?("микрофон: route=\(routeDescription); input=\(inputFormat); sessionRate=\(session.sampleRate); inputMuted=\(AVAudioApplication.shared.isInputMuted); inputAvailable=\(session.isInputAvailable); inputGain=\(session.inputGain)")
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             throw RecorderError.noInput
         }
@@ -113,44 +235,9 @@ final class Recorder {
             try engine.start()
         } catch {
             input.removeTap(onBus: 0)
-            try? session.setActive(false, options: .notifyOthersOnDeactivation)
             throw error
         }
-        running = true
-        observe()
     }
-
-    /// Забирает накопленные сэмплы и очищает буфер.
-    func takeSamples() -> [Float] {
-        lock.lock()
-        defer { lock.unlock() }
-        let taken = samples
-        samples.removeAll(keepingCapacity: true)
-        return taken
-    }
-
-    /// Движок продолжает работать, сэмплы отбрасываются.
-    func enterKeepAlive() {
-        lock.lock()
-        keepAlive = true
-        captureGeneration += 1
-        samples.removeAll(keepingCapacity: true)
-        lock.unlock()
-    }
-
-    func stop() {
-        guard running else { return }
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
-        running = false
-        for observer in observers {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        observers.removeAll()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-    }
-
-    // MARK: - Внутреннее
 
     /// Вызывается на аудиопотоке.
     private func handle(_ buffer: AVAudioPCMBuffer) {
@@ -164,6 +251,7 @@ final class Recorder {
             lock.withLock {
                 if !keepAlive && generation == captureGeneration {
                     rawPeak = max(rawPeak, peak)
+                    intervalPeak = max(intervalPeak, peak)
                     rawSamples += Int(buffer.frameLength)
                 }
             }

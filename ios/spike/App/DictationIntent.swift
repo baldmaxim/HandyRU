@@ -7,7 +7,7 @@ enum DictationCommandError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .notReady: return "Откройте Handy и включите фоновую диктовку. После этого можно вернуться в мессенджер."
+        case .notReady: return "Откройте Handy: фоновая диктовка выключена. После этого можно вернуться в приложение."
         case .busy: return "Дождитесь завершения распознавания."
         case .failed(let message): return message
         }
@@ -17,7 +17,7 @@ enum DictationCommandError: LocalizedError {
 @available(iOS 18.0, *)
 struct ToggleBackgroundDictationIntent: AudioRecordingIntent {
     static let title: LocalizedStringResource = "Диктовка в фоне"
-    static let description = IntentDescription("Первое нажатие — запись, второе — остановить и распознать. Затем дождитесь копирования командой «Handy» и нажмите «Вставить». Сначала включите фоновую диктовку в Handy.")
+    static let description = IntentDescription("Первое нажатие начинает запись, второе — останавливает и распознаёт. Результат можно скопировать следующим действием команды. Сначала включите фоновую диктовку в Handy.")
     static var openAppWhenRun: Bool { false }
     @available(iOS 26.0, *)
     static var supportedModes: IntentModes { .background }

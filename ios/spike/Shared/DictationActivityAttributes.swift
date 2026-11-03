@@ -14,29 +14,29 @@ struct DictationActivityAttributes: ActivityAttributes {
             case .ready: return "Диктовка готова"
             case .recording: return "Идёт запись"
             case .transcribing: return "Распознаём речь"
-            case .finished: return "Текст готов → «Вставить»"
-            case .noSpeech: return "Нет текста — повторите"
+            case .finished: return "Текст готов"
+            case .noSpeech: return "Речи не слышно"
             case .failed: return "Не удалось распознать"
             }
         }
 
         var instruction: String {
             switch self {
-            case .ready: return "1. Нажмите AssistiveTouch и говорите. Микрофон активен."
-            case .recording: return "2. Нажмите AssistiveTouch ещё раз, чтобы остановить запись и получить текст."
-            case .transcribing: return "Запись остановлена. Дождитесь текста."
-            case .finished: return "3. Дождитесь команды «Handy», затем нажмите «Вставить» в нужном приложении."
-            case .noSpeech: return "Нажмите AssistiveTouch, скажите фразу и нажмите ещё раз."
-            case .failed: return "Откройте Handy для подробностей."
+            case .ready: return "Нажмите AssistiveTouch и говорите"
+            case .recording: return "Нажмите ещё раз, чтобы остановить"
+            case .transcribing: return "Запись остановлена, подождите"
+            case .finished: return "Нажмите «Вставить» в нужном приложении"
+            case .noSpeech: return "Нажмите AssistiveTouch и повторите фразу"
+            case .failed: return "Откройте Handy, там указана причина"
             }
         }
 
         var compactTitle: String {
             switch self {
-            case .ready: return "1"
-            case .recording: return "СТОП"
-            case .transcribing: return "…"
-            case .finished: return "3"
+            case .ready: return "Готов"
+            case .recording: return "Стоп"
+            case .transcribing: return "Ждём"
+            case .finished: return "Текст"
             case .noSpeech, .failed: return "!"
             }
         }
@@ -45,7 +45,7 @@ struct DictationActivityAttributes: ActivityAttributes {
             switch self {
             case .ready: return "mic"
             case .recording: return "record.circle.fill"
-            case .transcribing: return "text.bubble"
+            case .transcribing: return "waveform"
             case .finished: return "doc.on.clipboard"
             case .noSpeech, .failed: return "exclamationmark.bubble"
             }

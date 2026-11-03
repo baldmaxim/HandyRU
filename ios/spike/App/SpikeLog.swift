@@ -54,6 +54,12 @@ final class SpikeLog: ObservableObject, @unchecked Sendable {
         write(tag: SpikeLog.tagInfo, message)
     }
 
+    /// Последние `lines` строк журнала: копирование целиком упирается в лимит сообщения.
+    func recentText(lines: Int) -> String {
+        guard lines > 0 else { return "" }
+        return text.split(separator: "\n", omittingEmptySubsequences: true).suffix(lines).joined(separator: "\n")
+    }
+
     /// Очищает файл и экран.
     func clear() {
         lock.lock()

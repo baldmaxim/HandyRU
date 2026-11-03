@@ -49,6 +49,8 @@ final class ModelStore: ObservableObject {
     @Published private(set) var progress = 0.0
     @Published private(set) var message = ""
     @Published private(set) var messageIsError = false
+    /// Технические подробности для журнала; пользователю показывается короткое сообщение.
+    var onLog: ((String) -> Void)?
 
     func clearMessage() {
         message = ""
@@ -120,14 +122,15 @@ final class ModelStore: ObservableObject {
             try await newDownloader.run(url: model.url)
 
             progress = 1
-            message = "Проверка sha256…"
+            message = "Проверка файла…"
             let actual = try await Task.detached(priority: .utility) {
                 try Self.sha256Hex(of: part)
             }.value
             guard actual == model.sha256 else {
                 try? FileManager.default.removeItem(at: part)
                 messageIsError = true
-                message = "sha256 не совпал: ожидалось \(model.sha256.prefix(12))…, получено \(actual.prefix(12))…. Файл удалён."
+                onLog?("sha256 не совпал: ожидалось \(model.sha256.prefix(12))…, получено \(actual.prefix(12))…. Файл удалён.")
+                message = "Файл модели повреждён. Скачайте её заново."
                 return
             }
 
@@ -137,7 +140,7 @@ final class ModelStore: ObservableObject {
             values.isExcludedFromBackup = true
             try? finalURL.setResourceValues(values)
 
-            message = "\(model.title): скачана, sha256 совпал"
+            message = "\(model.title): скачана"
             refresh()
         } catch {
             if let partURL { try? FileManager.default.removeItem(at: partURL) }
@@ -204,18 +207,23 @@ final class ModelStore: ObservableObject {
             let prefix = support.standardizedFileURL.path + "/"
             let full = folder.standardizedFileURL.path
             guard full.hasPrefix(prefix) else {
-                throw EngineError.message("папка модели вне Application Support: \(full)")
+                throw ModelFilesError(detail: "папка модели вне Application Support: \(full)")
             }
             UserDefaults.standard.set(String(full.dropFirst(prefix.count)), forKey: Self.coreMLPathKey)
             guard coreMLFolderURL != nil else {
                 UserDefaults.standard.removeObject(forKey: Self.coreMLPathKey)
-                throw EngineError.message("после скачивания нет \(Self.coreMLMarkerFile)")
+                throw ModelFilesError(detail: "после скачивания нет \(Self.coreMLMarkerFile)")
             }
             progress = 1
             message = "\(Self.coreMLTitle): скачана"
         } catch {
             messageIsError = !task.isCancelled
-            message = task.isCancelled ? "Скачивание отменено" : "Ошибка скачивания: \(error.localizedDescription)"
+            if let issue = error as? ModelFilesError {
+                onLog?("Ошибка скачивания Core ML: \(issue.detail)")
+                message = issue.localizedDescription
+            } else {
+                message = task.isCancelled ? "Скачивание отменено" : "Ошибка скачивания: \(error.localizedDescription)"
+            }
         }
         refresh()
     }
