@@ -37,7 +37,7 @@ struct DelayScale: View {
                     .fill(Color(.systemFill))
                     .frame(height: Self.trackHeight)
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color("HandyAccent"))
+                    .fill(seconds <= Self.limitSeconds ? Color.green : Color.orange)
                     .frame(width: geo.size.width * fillFraction, height: Self.trackHeight)
                 Rectangle()
                     .fill(Color.primary)

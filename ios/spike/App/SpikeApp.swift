@@ -4,6 +4,8 @@ import UIKit
 @main
 struct SpikeApp: App {
     @StateObject private var controller: SpikeController
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var hasPendingDictationCommand = false
 
     init() {
         _controller = StateObject(wrappedValue: SpikeController(log: SpikeLog(), store: ModelStore()))
@@ -16,6 +18,21 @@ struct SpikeApp: App {
                     // Экран не гаснет во время замеров: автоблокировка исказила бы состояние приложения.
                     UIApplication.shared.isIdleTimerDisabled = true
                 }
+                .onOpenURL { url in
+                    guard url.scheme == "handyspike", url.host == "dictation", url.path == "/toggle" else { return }
+                    hasPendingDictationCommand = true
+                    runPendingDictationCommand()
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { runPendingDictationCommand() }
+                }
         }
+    }
+
+    /// Активация микрофона начинается только после выхода приложения на передний план.
+    private func runPendingDictationCommand() {
+        guard hasPendingDictationCommand, scenePhase == .active else { return }
+        hasPendingDictationCommand = false
+        Task { await controller.toggleDictationFromShortcut() }
     }
 }

@@ -23,6 +23,7 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App
+      - path: Shared
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.handyru.spike
@@ -42,6 +43,7 @@ targets:
         # -lc++ для ggml; -liconv нужен стандартной библиотеке Rust.
         OTHER_LDFLAGS: -lhandy_spike_core -lc++ -liconv
     dependencies:
+      - target: HandyDictationWidget
       - sdk: Metal.framework
       # MetalKit есть в списке frameworks сборки transcribe-cpp-sys (ggml-metal).
       - sdk: MetalKit.framework
@@ -54,6 +56,11 @@ targets:
       path: Generated/Info.plist
       properties:
         CFBundleDisplayName: Handy Spike
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.handyru.spike.dictation
+            CFBundleURLSchemes:
+              - handyspike
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -67,6 +74,27 @@ targets:
       path: Generated/HandySpike.entitlements
       properties:
         com.apple.developer.kernel.increased-memory-limit: true
+
+  HandyDictationWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: DictationWidget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.handyru.spike.dictationwidget
+        PRODUCT_NAME: HandyDictationWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTED_PLATFORMS: iphoneos
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: true
+    info:
+      path: Generated/DictationWidget-Info.plist
+      properties:
+        CFBundleDisplayName: Handy Dictation
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
 
 schemes:
   HandySpike:

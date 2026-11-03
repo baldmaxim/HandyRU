@@ -22,12 +22,25 @@ final class Recorder {
 
     /// Сообщения об прерываниях сессии и смене конфигурации (для журнала). Вызывается на главном потоке.
     var onEvent: ((String) -> Void)?
+    var onInterruption: (() -> Void)?
 
     private let engine = AVAudioEngine()
     private let lock = NSLock()
     private var samples: [Float] = []
     private var keepAlive = false
+    private var rawPeak: Float = 0
+    private var rawSamples = 0
+    private var conversionErrors = 0
+
+    var receivingSilentBuffers: Bool {
+        lock.withLock { rawSamples > 0 && rawPeak == 0 }
+    }
+
+    var signalDescription: String {
+        lock.withLock { "peak=\(rawPeak) samples=\(rawSamples) conversionErrors=\(conversionErrors)" }
+    }
     private var running = false
+    private var captureGeneration = 0
     private var converter: AVAudioConverter?
     private var targetFormat: AVAudioFormat?
     private var observers: [NSObjectProtocol] = []
@@ -53,12 +66,18 @@ final class Recorder {
         return Double(samples.count) / Recorder.sampleRate
     }
 
+    var isRunning: Bool { running && engine.isRunning }
+
     /// Начинает запись (буфер обнуляется). Вызывать только на переднем плане:
     /// из фона активировать аудиосессию нельзя.
     func start() throws {
         lock.lock()
         samples.removeAll(keepingCapacity: true)
         keepAlive = false
+        rawPeak = 0
+        rawSamples = 0
+        conversionErrors = 0
+        captureGeneration += 1
         lock.unlock()
         if running { return }
 
@@ -68,6 +87,7 @@ final class Recorder {
 
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
+        onEvent?("микрофон: route=\(session.currentRoute.inputs.map { "\($0.portType.rawValue):\($0.portName)" }.joined(separator: ",")); input=\(inputFormat); sessionRate=\(session.sampleRate); inputMuted=\(AVAudioApplication.shared.isInputMuted); inputAvailable=\(session.isInputAvailable); inputGain=\(session.inputGain)")
         guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
             throw RecorderError.noInput
         }
@@ -88,8 +108,14 @@ final class Recorder {
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             self?.handle(buffer)
         }
-        engine.prepare()
-        try engine.start()
+        do {
+            engine.prepare()
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            throw error
+        }
         running = true
         observe()
     }
@@ -107,6 +133,7 @@ final class Recorder {
     func enterKeepAlive() {
         lock.lock()
         keepAlive = true
+        captureGeneration += 1
         samples.removeAll(keepingCapacity: true)
         lock.unlock()
     }
@@ -129,8 +156,18 @@ final class Recorder {
     private func handle(_ buffer: AVAudioPCMBuffer) {
         lock.lock()
         let discard = keepAlive
+        let generation = captureGeneration
         lock.unlock()
         if discard { return }
+        if let channel = buffer.floatChannelData?[0] {
+            let peak = UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)).reduce(Float(0)) { max($0, abs($1)) }
+            lock.withLock {
+                if !keepAlive && generation == captureGeneration {
+                    rawPeak = max(rawPeak, peak)
+                    rawSamples += Int(buffer.frameLength)
+                }
+            }
+        }
         guard let converter, let targetFormat else { return }
 
         let ratio = targetFormat.sampleRate / buffer.format.sampleRate
@@ -148,11 +185,16 @@ final class Recorder {
             inputStatus.pointee = .haveData
             return buffer
         }
-        guard status != .error, output.frameLength > 0, let channel = output.floatChannelData?[0] else { return }
+        guard status != .error, output.frameLength > 0, let channel = output.floatChannelData?[0] else {
+            lock.withLock { conversionErrors += 1 }
+            return
+        }
 
         let chunk = UnsafeBufferPointer(start: channel, count: Int(output.frameLength))
         lock.lock()
-        samples.append(contentsOf: chunk)
+        if !keepAlive && generation == captureGeneration {
+            samples.append(contentsOf: chunk)
+        }
         lock.unlock()
     }
 
@@ -163,11 +205,13 @@ final class Recorder {
                 let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
                 let type = raw.flatMap(AVAudioSession.InterruptionType.init(rawValue:))
                 self?.onEvent?("прерывание аудиосессии: \(type == .began ? "началось" : "закончилось")")
+                if type == .began { self?.onInterruption?() }
             }
         )
         observers.append(
             center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
                 self?.onEvent?("изменилась конфигурация аудиодвижка (запись могла остановиться)")
+                if self?.engine.isRunning == false { self?.onInterruption?() }
             }
         )
     }

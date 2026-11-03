@@ -48,6 +48,12 @@ final class ModelStore: ObservableObject {
     @Published private(set) var downloadingID: String?
     @Published private(set) var progress = 0.0
     @Published private(set) var message = ""
+    @Published private(set) var messageIsError = false
+
+    func clearMessage() {
+        message = ""
+        messageIsError = false
+    }
 
     /// Идентификатор модели Core ML: в `downloadingID` и в журнале.
     static let coreMLID = "turbo-coreml-632"
@@ -90,6 +96,7 @@ final class ModelStore: ObservableObject {
 
     func download(_ model: ModelInfo) async {
         guard downloadingID == nil else { return }
+        clearMessage()
         downloadingID = model.id
         progress = 0
         message = "Скачивание \(model.title) (\(model.sizeMB) МБ). Не сворачивайте приложение."
@@ -119,6 +126,7 @@ final class ModelStore: ObservableObject {
             }.value
             guard actual == model.sha256 else {
                 try? FileManager.default.removeItem(at: part)
+                messageIsError = true
                 message = "sha256 не совпал: ожидалось \(model.sha256.prefix(12))…, получено \(actual.prefix(12))…. Файл удалён."
                 return
             }
@@ -133,6 +141,7 @@ final class ModelStore: ObservableObject {
             refresh()
         } catch {
             if let partURL { try? FileManager.default.removeItem(at: partURL) }
+            messageIsError = (error as NSError).code != NSURLErrorCancelled
             message = "Ошибка скачивания: \(error.localizedDescription)"
         }
     }
@@ -142,11 +151,13 @@ final class ModelStore: ObservableObject {
     }
 
     func delete(_ model: ModelInfo) {
+        clearMessage()
         guard let url = fileURL(for: model) else { return }
         do {
             try FileManager.default.removeItem(at: url)
             message = "\(model.title): удалена"
         } catch {
+            messageIsError = true
             message = "Не удалось удалить: \(error.localizedDescription)"
         }
         refresh()
@@ -166,6 +177,7 @@ final class ModelStore: ObservableObject {
 
     func downloadCoreML() async {
         guard downloadingID == nil else { return }
+        clearMessage()
         downloadingID = Self.coreMLID
         progress = 0
         message = "Скачивание \(Self.coreMLTitle) (\(Self.coreMLSizeMB) МБ). Не сворачивайте приложение."
@@ -202,6 +214,7 @@ final class ModelStore: ObservableObject {
             progress = 1
             message = "\(Self.coreMLTitle): скачана"
         } catch {
+            messageIsError = !task.isCancelled
             message = task.isCancelled ? "Скачивание отменено" : "Ошибка скачивания: \(error.localizedDescription)"
         }
         refresh()
@@ -212,12 +225,14 @@ final class ModelStore: ObservableObject {
     }
 
     func deleteCoreML() {
+        clearMessage()
         UserDefaults.standard.removeObject(forKey: Self.coreMLPathKey)
         do {
             let base = try Self.coreMLBaseDirectory()
             try FileManager.default.removeItem(at: base)
             message = "\(Self.coreMLTitle): удалена"
         } catch {
+            messageIsError = true
             message = "Не удалось удалить: \(error.localizedDescription)"
         }
         refresh()
@@ -294,9 +309,7 @@ final class Downloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendabl
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 60
         let newSession = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
-        lock.lock()
-        session = newSession
-        lock.unlock()
+        lock.withLock { session = newSession }
         defer { newSession.finishTasksAndInvalidate() }
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in

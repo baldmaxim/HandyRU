@@ -1,52 +1,36 @@
 import SwiftUI
+import UIKit
 
-/// Итог замера: время, RTF, шкала задержки, пояснение и текст распознавания.
+/// Сначала текст и копирование; технические показатели доступны по раскрытию.
 struct ResultBlock: View {
     let result: SpikeController.RunResult
     let text: String
-
-    @ScaledMetric(relativeTo: .largeTitle) private var timeSize: CGFloat = 48
-
-    private var limitText: String {
-        let limit = Int(DelayScale.limitSeconds)
-        if result.seconds <= DelayScale.limitSeconds {
-            return "В пределах \(limit) с"
-        }
-        return "На \(SpikeFormat.seconds(result.seconds - DelayScale.limitSeconds)) дольше предела \(limit) с"
-    }
-
-    private var detailsText: String {
-        "\(result.modelTitle) · \(result.backendTitle) · \(result.modeTitle) · аудио \(SpikeFormat.seconds(result.audioSeconds))"
-    }
+    @State private var copied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(SpikeFormat.seconds(result.seconds))
-                    .font(.system(size: timeSize, weight: .medium))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Spacer()
-                Text("RTF \(SpikeFormat.number(result.rtf))")
-                    .font(.subheadline)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-
-            DelayScale(seconds: result.seconds)
-
-            Text(limitText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Text(detailsText)
-                .font(.caption)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-
-            Text(text.isEmpty ? "—" : text)
+            Text(text.isEmpty ? "Речь не распознана. Попробуйте записать фразу ещё раз." : text)
                 .textSelection(.enabled)
+            if !text.isEmpty {
+                Button {
+                    UIPasteboard.general.string = text
+                    copied = true
+                } label: {
+                    Label(copied ? "Скопировано" : "Скопировать текст", systemImage: copied ? "checkmark" : "doc.on.doc")
+                }
+                .buttonStyle(SpikeActionStyle())
+                Text(copied ? "В нужном приложении нажмите «Вставить»." : "Скопируйте текст, затем выберите «Вставить» в нужном приложении.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            DisclosureGroup("Замеры · \(SpikeFormat.seconds(result.seconds))") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("RTF \(SpikeFormat.number(result.rtf)) · аудио \(SpikeFormat.seconds(result.audioSeconds))")
+                    Text("\(result.modelTitle) · \(result.backendTitle) · \(result.modeTitle)")
+                    DelayScale(seconds: result.seconds)
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
+        .onChange(of: text) { _, _ in copied = false }
     }
 }
